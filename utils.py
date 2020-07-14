@@ -5,6 +5,11 @@ import scipy.misc
 import scipy.ndimage
 import numpy as np
 import copy
+from skimage import io, img_as_float, img_as_ubyte
+from skimage.transform import resize
+
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 pp = pprint.PrettyPrinter()
 
@@ -39,9 +44,14 @@ class ImagePool(object):
             return image
 
 def load_test_data(image_path, image_width=512, image_height=256):
+    # img = imread(image_path)
     img = imread(image_path)
-    img = scipy.misc.imresize(img, [image_height, image_width])
-    img = img/127.5 - 1
+    img = resize(img, (image_height, image_width))
+    
+    img = img*2 - 1
+    # print(img)
+    # imgplot = plt.imshow(img)
+    # plt.show()
     return img
 
 def one_hot(image_in, num_classes=8):
@@ -55,9 +65,9 @@ def load_train_data(image_path, image_width=512, image_height=256, num_seg_masks
     img_A = imread(image_path[0])
     img_B = imread(image_path[1])
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))
-    seg_class_A = scipy.misc.imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
+    seg_class_A = io.imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
     seg_B = imread(image_path[1].replace("trainB","trainB_seg"))
-    seg_class_B = scipy.misc.imread(image_path[1].replace("trainB","trainB_seg_class")) if not is_testing else None
+    seg_class_B = io.imread(image_path[1].replace("trainB","trainB_seg_class")) if not is_testing else None
     # preprocess seg masks
     if not is_testing:
       seg_mask_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
@@ -67,12 +77,12 @@ def load_train_data(image_path, image_width=512, image_height=256, num_seg_masks
       seg_mask_B = None
 
     if not is_testing:
-        img_A = scipy.misc.imresize(img_A, [image_height, image_width])
-        seg_A = scipy.misc.imresize(seg_A, [image_height, image_width])
+        img_A = resize(img_A, (image_height, image_width))
+        seg_A = resize(seg_A, (image_height, image_width))
         seg_mask_A = scipy.ndimage.interpolation.zoom(seg_mask_A, (image_height/8.0/seg_mask_A.shape[0], image_width/8.0/seg_mask_A.shape[1],1), mode="nearest")
         
-        img_B = scipy.misc.imresize(img_B, [image_height, image_width])
-        seg_B = scipy.misc.imresize(seg_B, [image_height, image_width])
+        img_B = resize(img_B, (image_height, image_width))
+        seg_B = resize(seg_B, (image_height, image_width))
         seg_mask_B = scipy.ndimage.interpolation.zoom(seg_mask_B, (image_height/8.0/seg_mask_B.shape[0], image_width/8.0/seg_mask_B.shape[1],1), mode="nearest")
 
         if np.random.random() > 0.5:
@@ -83,10 +93,10 @@ def load_train_data(image_path, image_width=512, image_height=256, num_seg_masks
             seg_mask_A = np.fliplr(seg_mask_A)
             seg_mask_B = np.fliplr(seg_mask_B)
     else:
-        img_A = scipy.misc.imresize(img_A, [image_height, image_width])
-        img_B = scipy.misc.imresize(img_B, [image_height, image_width])
-        seg_A = scipy.misc.imresize(seg_A, [image_height, image_width])
-        seg_B = scipy.misc.imresize(seg_B, [image_height, image_width])
+        img_A = resize(img_A, (image_height, image_width))
+        img_B = resize(img_B, (image_height, image_width))
+        seg_A = resize(seg_A, (image_height, image_width))
+        seg_B = resize(seg_B, (image_height, image_width))
  
     img_A = img_A/127.5 - 1.
     img_B = img_B/127.5 - 1.
@@ -108,15 +118,17 @@ def save_images(images, size, image_path):
 
 def imread(path, is_grayscale = False):
     if (is_grayscale):
-        return scipy.misc.imread(path, flatten = True).astype(np.float)
+        return img_as_float(io.imread(path, as_gray=is_grayscale))
     else:
-        return scipy.misc.imread(path, mode='RGB').astype(np.float)
+        return io.imread(path)
+        # return img_as_float(io.imread(path))
 
 def merge_images(images, size):
     return inverse_transform(images)
 
 def merge(images, size):
     h, w = images.shape[1], images.shape[2]
+    images = resize(images, (h, w, ))
     img = np.zeros((h * size[0], w * size[1], 3))
     for idx, image in enumerate(images):
         i = idx % size[1]
@@ -124,9 +136,10 @@ def merge(images, size):
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
     return img
+    # return img_as_ubyte(img)
 
 def imsave(images, size, path):
-    return scipy.misc.imsave(path, merge(images, size))
+    return io.imsave(path, merge(images, size))
 
 def center_crop(x, crop_h, crop_w,
                 resize_h=64, resize_w=64):
@@ -144,7 +157,8 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
         cropped_image = center_crop(image, npx, resize_w=resize_w)
     else:
         cropped_image = image
-    return np.array(cropped_image)/127.5 - 1.
+    # return np.array(cropped_image)/127.5 - 1.
+    return np.array(cropped_image)/*2 - 1.
 
 def inverse_transform(images):
     return (images+1.)/2.
