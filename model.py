@@ -1,335 +1,216 @@
 from __future__ import division
-import os
-import time
-from glob import glob
-import tensorflow as tf
-import numpy as np
-from collections import namedtuple
 
-from module import *
+import tensorflow as tf
+from tensorflow.keras import layers
+import tensorflow_addons as tfa
+
+from ops import *
 from utils import *
 
-class sggan(object):
-    def __init__(self, sess, args):
-        self.sess = sess
-        self.batch_size = args.batch_size
-        self.image_width = args.img_width
-        self.image_height = args.img_height
-        self.input_c_dim = args.input_nc
-        self.output_c_dim = args.output_nc
-        self.L1_lambda = args.L1_lambda
-        self.Lg_lambda = args.Lg_lambda
-        self.dataset_dir = args.dataset_dir
-        self.segment_class = args.segment_class
+def generator_unet():
+  gf_dim = 64
+  output_c_dim = 3 
+  is_training = True
 
-        self.discriminator = discriminator
-        if args.use_resnet:
-            self.generator = generator_resnet
-        else:
-            self.generator = generator_unet
-        if args.use_lsgan:
-            self.criterionGAN = mae_criterion
-        else:
-            self.criterionGAN = sce_criterion
+  dropout_rate = 0.5 if is_training else 1.0
+  
+  inputs = tf.keras.layers.Input(shape=(256,512,3,))
 
-        OPTIONS = namedtuple('OPTIONS', 'batch_size image_height image_width \
-                              gf_dim df_dim output_c_dim is_training segment_class')
-        self.options = OPTIONS._make((args.batch_size, args.img_height, args.img_width,
-                                      args.ngf, args.ndf, args.output_nc,
-                                      args.phase == 'train', args.segment_class))
+  e1 = tf.keras.layers.Conv2D(gf_dim, (3, 3), padding="same")(inputs)
+  e1 = tfa.layers.InstanceNormalization() (e1)
+  e1 = tf.keras.layers.LeakyReLU() (e1)
 
-        self._build_model()
-        self.saver = tf.train.Saver()
-        self.pool = ImagePool(args.max_size)
+  e2 = tf.keras.layers.Conv2D(gf_dim*2, (3, 3), padding="same")(e1)
+  e2 = tfa.layers.InstanceNormalization() (e2)
+  e2 = tf.keras.layers.LeakyReLU() (e2)
+
+  e3 = tf.keras.layers.Conv2D(gf_dim*4, (3, 3), padding="same")(e2)
+  e3 = tfa.layers.InstanceNormalization() (e3)
+  e3 = tf.keras.layers.LeakyReLU() (e3)
+
+  e4 = tf.keras.layers.Conv2D(gf_dim*8, (3, 3), padding="same")(e3)
+  e4 = tfa.layers.InstanceNormalization() (e4)
+  e4 = tf.keras.layers.LeakyReLU() (e4)
+
+  e5 = tf.keras.layers.Conv2D(gf_dim*8, (3, 3), padding="same")(e4)
+  e5 = tfa.layers.InstanceNormalization() (e5)
+  e5 = tf.keras.layers.LeakyReLU() (e5)
+
+  e6 = tf.keras.layers.Conv2D(gf_dim*8, (3, 3), padding="same")(e5)
+  e6 = tfa.layers.InstanceNormalization() (e6)
+  e6 = tf.keras.layers.LeakyReLU() (e6)
+
+  e7 = tf.keras.layers.Conv2D(gf_dim*8, (3, 3), padding="same")(e6)
+  e7 = tfa.layers.InstanceNormalization() (e7)
+  e7 = tf.keras.layers.LeakyReLU() (e7)
+
+  e8 = tf.keras.layers.Conv2D(gf_dim*8, (3, 3), padding="same")(e7)
+  e8 = tfa.layers.InstanceNormalization() (e8)
+  e8 = tf.keras.layers.Activation('relu')(e8)
+  
+  d1 = tf.keras.layers.Conv2DTranspose(gf_dim*8, (3, 3), padding="same") (e8)
+  d1 = tf.keras.layers.Dropout(dropout_rate) (d1)
+  d1 = tfa.layers.InstanceNormalization() (d1)
+  d1 = tf.keras.layers.add([d1, e7])
+
+  d2 = tf.keras.layers.Conv2DTranspose(gf_dim*8, (3, 3), padding="same") (d1)
+  d2 = tf.keras.layers.Dropout(dropout_rate) (d2)
+  d2 = tfa.layers.InstanceNormalization() (d2)
+  d2 = tf.keras.layers.add([d2, e6])
+
+  d3 = tf.keras.layers.Conv2DTranspose(gf_dim*8, (3, 3), padding="same") (d2)
+  d3 = tf.keras.layers.Dropout(dropout_rate) (d3)
+  d3 = tfa.layers.InstanceNormalization() (d3)
+  d3 = tf.keras.layers.add([d3, e5]) 
+  d3 = tf.keras.layers.Activation('relu')(d3)
+
+  d4 = tf.keras.layers.Conv2DTranspose(gf_dim*8, (3, 3), padding="same") (d3)
+  d4 = tfa.layers.InstanceNormalization() (d4)
+  d4 = tf.keras.layers.add([d4, e4]) 
+
+  d5 = tf.keras.layers.Conv2DTranspose(gf_dim*4, (3, 3), padding="same") (d4)
+  d5 = tfa.layers.InstanceNormalization() (d5)
+  d5 = tf.keras.layers.add([d5, e3]) 
+
+  d6 = tf.keras.layers.Conv2DTranspose(gf_dim*2, (3, 3), padding="same") (d5)
+  d6 = tfa.layers.InstanceNormalization() (d6)
+  d6 = tf.keras.layers.add([d6, e2]) 
+
+  d7 = tf.keras.layers.Conv2DTranspose(gf_dim, (3, 3), padding="same") (d6)
+  d7 = tfa.layers.InstanceNormalization() (d7)
+  d7 = tf.keras.layers.add([d7, e1]) 
+  d7 = tf.keras.layers.Activation('relu')(d7)
+
+  d8 = tf.keras.layers.Conv2DTranspose(output_c_dim, (3, 3), padding="same") (d7)
+
+  G_model = tf.keras.Model(inputs = inputs, outputs = d8)
+
+  return G_model
+
+def residule_block(x, dim, ks=3, s=1):
+  p = int((ks - 1) / 2)
+  y = tf.pad(x, [[0, 0], [p, p], [p, p], [0, 0]], "REFLECT")
+  y = tf.keras.layers.Conv2D(dim, (ks, ks), strides=(s,s), padding="valid")(y)
+  y = tfa.layers.InstanceNormalization() (y)
+  y =  tf.keras.layers.Activation('relu') (y)
+  y = tf.pad(y, [[0, 0], [p, p], [p, p], [0, 0]], "REFLECT")
+  y = tf.keras.layers.Conv2D(dim, (ks, ks), strides=(s,s), padding="valid")(y)
+  y = tfa.layers.InstanceNormalization() (y)
+  return y + x
+
+def generator_resnet():
+  gf_dim = 64
+  output_c_dim = 3 
+  
+  inputs = tf.keras.layers.Input(shape=(256,512,3,))
+  
+  # Justin Johnson's model from https://github.com/jcjohnson/fast-neural-style/
+  # The network with 9 blocks consists of: c7s1-32, d64, d128, R128, R128, R128,
+  # R128, R128, R128, R128, R128, R128, u64, u32, c7s1-3
+  c0 = tf.pad(inputs, [[0, 0], [3, 3], [3, 3], [0, 0]], "REFLECT")
+
+  c1 = tf.keras.layers.Conv2D(gf_dim, (7, 7), strides=(1,1), padding="valid")(c0)
+  c1 = tfa.layers.InstanceNormalization() (c1)
+  c1 =  tf.keras.layers.Activation('relu') (c1)
+
+  c2 = tf.keras.layers.Conv2D(gf_dim*2, (3, 3), strides=(2,2), padding="same")(c1)
+  c2 = tfa.layers.InstanceNormalization() (c2)
+  c2 =  tf.keras.layers.Activation('relu') (c2)
+
+  c3 = tf.keras.layers.Conv2D(gf_dim*4, (3, 3), strides=(2,2), padding="same")(c2)
+  c3 = tfa.layers.InstanceNormalization() (c3)
+  c3 =  tf.keras.layers.Activation('relu') (c3)
+
+  r1 = residule_block(c3, gf_dim*4)
+  r2 = residule_block(r1, gf_dim*4)
+  r3 = residule_block(r2, gf_dim*4)
+  r4 = residule_block(r3, gf_dim*4)
+  r5 = residule_block(r4, gf_dim*4)
+  r6 = residule_block(r5, gf_dim*4)
+  r7 = residule_block(r6, gf_dim*4)
+  r8 = residule_block(r7, gf_dim*4)
+  r9 = residule_block(r8, gf_dim*4)
+
+  d1 = tf.keras.layers.Conv2DTranspose(gf_dim*2, (3, 3), strides=(2,2), padding="same") (r9)
+  d1 = tfa.layers.InstanceNormalization() (d1)
+  d1 =  tf.keras.layers.Activation('relu') (d1)
+
+  d2 = tf.keras.layers.Conv2DTranspose(gf_dim, (3, 3), strides=(2,2), padding="same") (d1)
+  d2 = tfa.layers.InstanceNormalization() (d2)
+  d2 =  tf.keras.layers.Activation('relu') (d2)
+
+  d2 = tf.pad(d2, [[0, 0], [3, 3], [3, 3], [0, 0]], "REFLECT")
+
+  d2 = tf.keras.layers.Conv2D(output_c_dim, (7, 7), strides=(1,1), padding="valid")(d2)
+  pred =  tf.keras.layers.Activation('tanh') (d2)
+
+  G_model = tf.keras.Model(inputs = inputs, outputs = pred)
+
+  return G_model
 
 
-    def _build_model(self):
-        self.real_data = tf.placeholder(tf.float32,
-                                        [None, self.image_height, self.image_width,
-                                         self.input_c_dim + self.output_c_dim],
-                                        name='real_A_and_B_images')
-        self.seg_data = tf.placeholder(tf.float32,
-                                        [None, self.image_height, self.image_width,
-                                         self.input_c_dim + self.output_c_dim],
-                                        name='seg_A_and_B_images')
-        self.mask_A = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_A')
-        self.mask_B = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_B')
+def discriminator():
+  df_dim = 64
+  segment_class = 8
+  image_height = 256
+  image_width = 512
+
+  inputs = tf.keras.layers.Input(shape=(image_height,image_width,3,))
+  # mask = tf.keras.layers.Input(shape=(image_height,image_width,3,))
+  mask = tf.keras.layers.Input(shape=(32, 64, segment_class), dtype=tf.dtypes.float32)
+
+  h0 = tf.keras.layers.Conv2D(df_dim, (3, 3), strides=(2,2), padding="same")(inputs)
+  h0 = tf.keras.layers.LeakyReLU() (h0)
+
+  h1 = tf.keras.layers.Conv2D(df_dim*2, (3, 3), strides=(2,2), padding="same")(h0)
+  h1 = tfa.layers.InstanceNormalization() (h1)
+  h1 = tf.keras.layers.LeakyReLU() (h1)
+
+  h2 = tf.keras.layers.Conv2D(df_dim*4, (3, 3), strides=(2,2), padding="same")(h1)
+  h2 = tfa.layers.InstanceNormalization() (h2)
+  h2 = tf.keras.layers.LeakyReLU() (h2)
+
+  h3 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(1,1), padding="same")(h2)
+  h3 = tfa.layers.InstanceNormalization() (h3)
+  h3 = tf.keras.layers.LeakyReLU() (h3)
+
+  h4 = tf.keras.layers.Conv2D(segment_class, (3, 3), padding="same")(h3)
+  h4 = tf.keras.layers.multiply([h4, mask])
+
+  h4_mask = tf.math.reduce_sum(h4, axis=-1, keepdims=True)
+  
+  D_model = tf.keras.Model(inputs = [inputs, mask], outputs = h4_mask)
+
+  return D_model
+
+# Other functions 
+
+def tf_kernel_prep_3d(kernel, n_channels):
+    return np.tile(kernel, (n_channels, 1, 1)).swapaxes(0,1).swapaxes(1,2)
+
+def tf_deriv(batch, ksize=3, padding='SAME'):
+    n_ch = int(batch.get_shape().as_list()[3])
+    gx = tf_kernel_prep_3d(np.array([[-1, 0, 1],
+                                     [-2, 0, 2],
+                                     [-1, 0, 1]]), n_ch)
+    gy = tf_kernel_prep_3d(np.array([[-1,-2, -1],
+                                     [ 0, 0, 0],
+                                     [ 1, 2, 1]]), n_ch)
+    kernel = tf.constant(np.stack([gx, gy], axis=-1), name="DerivKernel_image", dtype = np.float32)
+    return tf.nn.depthwise_conv2d(batch, kernel, [1, 1, 1, 1], padding=padding, name="GradXY")
+
+def abs_criterion(in_, target):
+    return tf.math.reduce_mean(tf.abs(in_ - target))
 
 
-        self.real_A = self.real_data[:, :, :, :self.input_c_dim]
-        self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
-        self.seg_A = self.seg_data[:, :, :, :self.input_c_dim]
-        self.seg_B = self.seg_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+def mae_criterion(in_, target):
+    return tf.math.reduce_mean((in_-target)**2)
 
 
-        # gradient kernel for seg
-        # assume input_c_dim == output_c_dim
-        self.kernels = []
-        self.kernels.append( tf_kernel_prep_3d(np.array([[0,0,0],[-1,0,1],[0,0,0]]), self.input_c_dim) )
-        self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), self.input_c_dim) )
-        self.kernel = tf.constant(np.stack(self.kernels, axis=-1), name="DerivKernel_seg", dtype=np.float32)
+def sce_criterion(logits, labels):
+    return tf.math.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
 
-        self.seg_A = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        self.seg_B = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        self.conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(self.seg_A, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
-        self.conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(self.seg_B, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
-        # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
-        self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True)))
-        self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True)))
-        #self.weighted_seg_A = 0.9 * tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True))) + 0.1
-        #self.weighted_seg_B = 0.9 * tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True))) + 0.1
-
-        #self.weighted_seg_A = tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True))
-        #self.weighted_seg_B = tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True))
-        #self.weighted_seg_A = 0.9 * tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True)) + 0.1
-        #self.weighted_seg_B = 0.9 * tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True)) + 0.1
-
-
-        self.fake_B = self.generator(self.real_A, self.options, False, name="generatorA2B")
-        self.fake_A_ = self.generator(self.fake_B, self.options, False, name="generatorB2A")
-        self.fake_A = self.generator(self.real_B, self.options, True, name="generatorB2A")
-        self.fake_B_ = self.generator(self.fake_A, self.options, True, name="generatorA2B")
-
-        self.DB_fake = self.discriminator(self.fake_B, self.mask_A, self.options, reuse=False, name="discriminatorB")
-        self.DA_fake = self.discriminator(self.fake_A, self.mask_B, self.options, reuse=False, name="discriminatorA")
-        self.g_loss_a2b = self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
-        self.g_loss_b2a = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
-        self.g_loss = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
-            + self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
-
-        #fake_A
-        self.fake_A_sample = tf.placeholder(tf.float32,
-                                            [None, self.image_height, self.image_width,
-                                             self.input_c_dim], name='fake_A_sample')
-        #fake_B
-        self.fake_B_sample = tf.placeholder(tf.float32,
-                                            [None, self.image_height, self.image_width,
-                                             self.output_c_dim], name='fake_B_sample')
-        self.mask_A_sample = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_A_sample')
-        self.mask_B_sample = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_B_sample')
-
-
-        self.DB_real = self.discriminator(self.real_B, self.mask_B, self.options, reuse=True, name="discriminatorB")
-        self.DA_real = self.discriminator(self.real_A, self.mask_A, self.options, reuse=True, name="discriminatorA")
-        self.DB_fake_sample = self.discriminator(self.fake_B_sample, self.mask_B_sample, self.options, reuse=True, name="discriminatorB")
-        self.DA_fake_sample = self.discriminator(self.fake_A_sample, self.mask_A_sample, self.options, reuse=True, name="discriminatorA")
-
-        self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
-        self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
-        self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
-        self.da_loss_real = self.criterionGAN(self.DA_real, tf.ones_like(self.DA_real))
-        self.da_loss_fake = self.criterionGAN(self.DA_fake_sample, tf.zeros_like(self.DA_fake_sample))
-        self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
-        self.d_loss = self.da_loss + self.db_loss
-
-        self.g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", self.g_loss_a2b)
-        self.g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", self.g_loss_b2a)
-        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
-        self.g_sum = tf.summary.merge([self.g_loss_a2b_sum, self.g_loss_b2a_sum, self.g_loss_sum])
-        self.db_loss_sum = tf.summary.scalar("db_loss", self.db_loss)
-        self.da_loss_sum = tf.summary.scalar("da_loss", self.da_loss)
-        self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
-        self.db_loss_real_sum = tf.summary.scalar("db_loss_real", self.db_loss_real)
-        self.db_loss_fake_sum = tf.summary.scalar("db_loss_fake", self.db_loss_fake)
-        self.da_loss_real_sum = tf.summary.scalar("da_loss_real", self.da_loss_real)
-        self.da_loss_fake_sum = tf.summary.scalar("da_loss_fake", self.da_loss_fake)
-        self.d_sum = tf.summary.merge(
-            [self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
-             self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
-             self.d_loss_sum]
-        )
-
-        self.test_A = tf.placeholder(tf.float32,
-                                     [None, self.image_height, self.image_width,
-                                      self.input_c_dim], name='test_A')
-        self.test_B = tf.placeholder(tf.float32,
-                                     [None, self.image_height, self.image_width,
-                                      self.output_c_dim], name='test_B')
-        self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
-        self.testA = self.generator(self.test_B, self.options, True, name="generatorB2A")
-
-        t_vars = tf.trainable_variables()
-        self.d_vars = [var for var in t_vars if 'discriminator' in var.name]
-        self.g_vars = [var for var in t_vars if 'generator' in var.name]
-        for var in t_vars: print(var.name)
-
-    def train(self, args):
-        """Train SG-GAN"""
-        self.lr = tf.placeholder(tf.float32, None, name='learning_rate')
-        self.d_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
-            .minimize(self.d_loss, var_list=self.d_vars)
-        self.g_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
-            .minimize(self.g_loss, var_list=self.g_vars)
-
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
-        self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
-
-        counter = 1
-        start_time = time.time()
-
-        if args.continue_train and self.load(args.checkpoint_dir):
-            print(" [*] Load SUCCESS")
-        else:
-            print(" [!] Load failed...")
-        for epoch in range(args.epoch):
-            dataA = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainA'))
-            dataB = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainB'))
-            np.random.shuffle(dataA)
-            np.random.shuffle(dataB)
-            batch_idxs = min(min(len(dataA), len(dataB)), args.train_size) // self.batch_size
-            lr = args.lr if epoch < args.epoch_step else args.lr*(args.epoch-epoch)/(args.epoch-args.epoch_step)
-
-            for idx in range(0, batch_idxs):
-                batch_files = list(zip(dataA[idx * self.batch_size:(idx + 1) * self.batch_size],
-                                       dataB[idx * self.batch_size:(idx + 1) * self.batch_size]))
-                batch_images = []
-                batch_segs = []
-                batch_seg_mask_A = []
-                batch_seg_mask_B = []
-                for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
-                    batch_images.append(tmp_image)
-                    batch_segs.append(tmp_seg)
-                    batch_seg_mask_A.append(tmp_seg_mask_A)
-                    batch_seg_mask_B.append(tmp_seg_mask_B)
-
-                batch_images = np.array(batch_images).astype(np.float32)
-                batch_segs = np.array(batch_segs).astype(np.float32)
-                batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
-                batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
-                
-                # Update G network and record fake outputs
-                fake_A, fake_B, fake_A_mask, fake_B_mask, _, summary_str = self.sess.run(
-                    [self.fake_A, self.fake_B, self.mask_B, self.mask_A, self.g_optim, self.g_sum],
-                    feed_dict={self.real_data: batch_images, self.lr: lr, self.seg_data: batch_segs,
-                    self.mask_A: batch_seg_mask_A, self.mask_B: batch_seg_mask_B})
-                self.writer.add_summary(summary_str, counter)
-                [fake_A, fake_B, fake_A_mask, fake_B_mask] = self.pool([fake_A, fake_B, fake_A_mask, fake_B_mask])
-                # Update D network
-                _, summary_str = self.sess.run(
-                    [self.d_optim, self.d_sum],
-                    feed_dict={self.real_data: batch_images,
-                               self.fake_A_sample: fake_A,
-                               self.fake_B_sample: fake_B,
-                               self.mask_A_sample: fake_A_mask,
-                               self.mask_B_sample: fake_B_mask,
-                               self.mask_A: batch_seg_mask_A,
-                               self.mask_B: batch_seg_mask_B,
-                               self.lr: lr})
-                self.writer.add_summary(summary_str, counter)
-
-                counter += 1
-                print(("Epoch: [%2d] [%4d/%4d] time: %4.4f" % (
-                    epoch, idx, batch_idxs, time.time() - start_time)))
-
-                if np.mod(counter, args.print_freq) == 1:
-                    self.sample_model(args.sample_dir, epoch, idx)
-
-                if np.mod(counter, args.save_freq) == 2:
-                    self.save(args.checkpoint_dir, counter)
-
-    def save(self, checkpoint_dir, step):
-        model_name = "sggan.model"
-        model_dir = "%s" % self.dataset_dir
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
-
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
-
-        self.saver.save(self.sess,
-                        os.path.join(checkpoint_dir, model_name),
-                        global_step=step)
-
-    def load(self, checkpoint_dir):
-        print(" [*] Reading checkpoint...")
-
-        model_dir = "%s" % self.dataset_dir
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
-
-        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-            self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-            return True
-        else:
-            return False
-
-    def sample_model(self, sample_dir, epoch, idx):
-        dataA = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
-        dataB = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testB'))
-        np.random.shuffle(dataA)
-        np.random.shuffle(dataB)
-        batch_files = list(zip(dataA[:self.batch_size], dataB[:self.batch_size]))
-        batch_images = []
-        batch_segs = []
-        for batch_file in batch_files:
-            tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
-            batch_images.append(tmp_image)
-            batch_segs.append(tmp_seg)
-               
-        batch_images = np.array(batch_images).astype(np.float32)
-        batch_segs = np.array(batch_segs).astype(np.float32)
-
-        fake_A, fake_B = self.sess.run(
-            [self.fake_A, self.fake_B],
-            feed_dict={self.real_data: batch_images, self.seg_data: batch_segs}
-        )
-        save_images(fake_A, [self.batch_size, 1],
-                    './{}/A_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][1].split("/")[-1].split(".")[0]))
-        save_images(fake_B, [self.batch_size, 1],
-                    './{}/B_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][0].split("/")[-1].split(".")[0]))
-
-    def test(self, args):
-        """Test SG-GAN"""
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
-        if args.which_direction == 'AtoB':
-            sample_files = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
-        elif args.which_direction == 'BtoA':
-            sample_files = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testB'))
-        else:
-            raise Exception('--which_direction must be AtoB or BtoA')
-
-        if self.load(args.checkpoint_dir):
-            print(" [*] Load SUCCESS")
-        else:
-            print(" [!] Load failed...")
-
-        # write html for visual comparison
-        index_path = os.path.join(args.test_dir, '{0}_index.html'.format(args.which_direction))
-        index = open(index_path, "w")
-        index.write("<html><body><table><tr>")
-        index.write("<th>name</th><th>input</th><th>output</th></tr>")
-
-        out_var, in_var = (self.testB, self.test_A) if args.which_direction == 'AtoB' else (
-            self.testA, self.test_B)
-
-        for sample_file in sample_files:
-            print('Processing image: ' + sample_file)
-            sample_image = [load_test_data(sample_file, args.img_width, args.img_height)]
-            sample_image = np.array(sample_image).astype(np.float32)
-            image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
-            fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})
-            real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
-            save_images(sample_image, [1, 1], real_image_copy)
-            save_images(fake_img, [1, 1], image_path)
-            index.write("<td>%s</td>" % os.path.basename(image_path))
-            index.write("<td><img src='%s'></td>" % (real_image_copy if os.path.isabs(real_image_copy) else (
-                '..' + os.path.sep + real_image_copy)))
-            index.write("<td><img src='%s'></td>" % (image_path if os.path.isabs(image_path) else (
-                '..' + os.path.sep + image_path)))
-            index.write("</tr>")
-        index.close()
+def gradloss_criterion(in_, target, weight):
+    abs_deriv = tf.abs(tf.abs(tf_deriv(in_)) - tf.abs(tf_deriv(target)))
+    abs_deriv = tf.math.reduce_mean(abs_deriv, axis=-1, keep_dims=True)
+    return tf.math.reduce_mean(tf.multiply(weight, abs_deriv))
