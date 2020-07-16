@@ -83,78 +83,52 @@ class sggan(object):
         #self.weighted_seg_B = tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True))
         #self.weighted_seg_A = 0.9 * tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True)) + 0.1
         #self.weighted_seg_B = 0.9 * tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True)) + 0.1
-
-
-        self.fake_B = self.generator(self.real_A, self.options, False, name="generatorA2B")
-        self.fake_A_ = self.generator(self.fake_B, self.options, False, name="generatorB2A")
-        self.fake_A = self.generator(self.real_B, self.options, True, name="generatorB2A")
-        self.fake_B_ = self.generator(self.fake_A, self.options, True, name="generatorA2B")
-
-        self.DB_fake = self.discriminator(self.fake_B, self.mask_A, self.options, reuse=False, name="discriminatorB")
-        self.DA_fake = self.discriminator(self.fake_A, self.mask_B, self.options, reuse=False, name="discriminatorA")
         
         
-        ####### LOSS #########
-        self.g_loss_a2b = self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
-        self.g_loss_b2a = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
-        self.g_loss = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
-            + self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
+        # Loss #
+        # self.g_loss_a2b = self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
+        #     + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+        #     + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+        #     + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
+        #     + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
+        # self.g_loss_b2a = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
+        #     + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+        #     + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+        #     + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
+        #     + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
+        # self.g_loss = self.criterionGAN(self.DA_fake, tf.ones_like(self.DA_fake)) \
+        #     + self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
+        #     + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+        #     + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+        #     + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
+        #     + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
 
-        #fake_A
-        self.fake_A_sample = tf.placeholder(tf.float32,
-                                            [None, self.image_height, self.image_width,
-                                             self.input_c_dim], name='fake_A_sample')
-        #fake_B
-        self.fake_B_sample = tf.placeholder(tf.float32,
-                                            [None, self.image_height, self.image_width,
-                                             self.output_c_dim], name='fake_B_sample')
-        self.mask_A_sample = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_A_sample')
-        self.mask_B_sample = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_B_sample')
+        
+        # Loss #
+        # self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
+        # self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
+        # self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
+        # self.da_loss_real = self.criterionGAN(self.DA_real, tf.ones_like(self.DA_real))
+        # self.da_loss_fake = self.criterionGAN(self.DA_fake_sample, tf.zeros_like(self.DA_fake_sample))
+        # self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
+        # self.d_loss = self.da_loss + self.db_loss
 
-
-        self.DB_real = self.discriminator(self.real_B, self.mask_B, self.options, reuse=True, name="discriminatorB")
-        self.DA_real = self.discriminator(self.real_A, self.mask_A, self.options, reuse=True, name="discriminatorA")
-        self.DB_fake_sample = self.discriminator(self.fake_B_sample, self.mask_B_sample, self.options, reuse=True, name="discriminatorB")
-        self.DA_fake_sample = self.discriminator(self.fake_A_sample, self.mask_A_sample, self.options, reuse=True, name="discriminatorA")
-
-        ####### LOSS #########
-        self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
-        self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
-        self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
-        self.da_loss_real = self.criterionGAN(self.DA_real, tf.ones_like(self.DA_real))
-        self.da_loss_fake = self.criterionGAN(self.DA_fake_sample, tf.zeros_like(self.DA_fake_sample))
-        self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
-        self.d_loss = self.da_loss + self.db_loss
-
-        ####### LOSS #########
-        self.g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", self.g_loss_a2b)
-        self.g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", self.g_loss_b2a)
-        self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
-        self.g_sum = tf.summary.merge([self.g_loss_a2b_sum, self.g_loss_b2a_sum, self.g_loss_sum])
-        self.db_loss_sum = tf.summary.scalar("db_loss", self.db_loss)
-        self.da_loss_sum = tf.summary.scalar("da_loss", self.da_loss)
-        self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
-        self.db_loss_real_sum = tf.summary.scalar("db_loss_real", self.db_loss_real)
-        self.db_loss_fake_sum = tf.summary.scalar("db_loss_fake", self.db_loss_fake)
-        self.da_loss_real_sum = tf.summary.scalar("da_loss_real", self.da_loss_real)
-        self.da_loss_fake_sum = tf.summary.scalar("da_loss_fake", self.da_loss_fake)
-        self.d_sum = tf.summary.merge(
-            [self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
-             self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
-             self.d_loss_sum]
-        )
+        # self.g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", self.g_loss_a2b)
+        # self.g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", self.g_loss_b2a)
+        # self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
+        # self.g_sum = tf.summary.merge([self.g_loss_a2b_sum, self.g_loss_b2a_sum, self.g_loss_sum])
+        # self.db_loss_sum = tf.summary.scalar("db_loss", self.db_loss)
+        # self.da_loss_sum = tf.summary.scalar("da_loss", self.da_loss)
+        # self.d_loss_sum = tf.summary.scalar("d_loss", self.d_loss)
+        # self.db_loss_real_sum = tf.summary.scalar("db_loss_real", self.db_loss_real)
+        # self.db_loss_fake_sum = tf.summary.scalar("db_loss_fake", self.db_loss_fake)
+        # self.da_loss_real_sum = tf.summary.scalar("da_loss_real", self.da_loss_real)
+        # self.da_loss_fake_sum = tf.summary.scalar("da_loss_fake", self.da_loss_fake)
+        # self.d_sum = tf.summary.merge(
+        #     [self.da_loss_sum, self.da_loss_real_sum, self.da_loss_fake_sum,
+        #      self.db_loss_sum, self.db_loss_real_sum, self.db_loss_fake_sum,
+        #      self.d_loss_sum]
+        # )
 
         self.test_A = tf.placeholder(tf.float32,
                                      [None, self.image_height, self.image_width,
@@ -187,23 +161,44 @@ class sggan(object):
             + self.L1_lambda * abs_criterion(real_B, fake_B_) \
             + self.Lg_lambda * gradloss_criterion(real_A, fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(real_B, fake_A, self.weighted_seg_B)
-            
-            return g_loss
+        
+        g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", g_loss_a2b)
+        g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", g_loss_b2a)
+        g_loss_sum = tf.summary.scalar("g_loss", .g_loss)
+        
+        self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
+        
+        return g_loss
         
     def discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample):
-        ####### LOSS #########
-        self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
-        self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
-        self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
-        self.da_loss_real = self.criterionGAN(self.DA_real, tf.ones_like(self.DA_real))
-        self.da_loss_fake = self.criterionGAN(self.DA_fake_sample, tf.zeros_like(self.DA_fake_sample))
-        self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
-        self.d_loss = self.da_loss + self.db_loss
+        db_loss_real = self.criterionGAN(DB_real, tf.ones_like(self.DB_real))
+        db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
+        db_loss = (db_loss_real + db_loss_fake) / 2
+        da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
+        da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
+        da_loss = (da_loss_real + da_loss_fake) / 2
+        d_loss = da_loss + db_loss
+        
+        db_loss_sum = tf.summary.scalar("db_loss", db_loss)
+        da_loss_sum = tf.summary.scalar("da_loss", da_loss)
+        d_loss_sum = tf.summary.scalar("d_loss", d_loss)
+        db_loss_real_sum = tf.summary.scalar("db_loss_real", db_loss_real)
+        db_loss_fake_sum = tf.summary.scalar("db_loss_fake", db_loss_fake)
+        da_loss_real_sum = tf.summary.scalar("da_loss_real", da_loss_real)
+        da_loss_fake_sum = tf.summary.scalar("da_loss_fake", da_loss_fake)
+        
+        self.d_sum = tf.summary.merge(
+            [da_loss_sum, da_loss_real_sum, da_loss_fake_sum,
+             db_loss_sum, db_loss_real_sum, db_loss_fake_sum,
+             d_loss_sum]
+        )
         
         return d_loss
     
+    @tf.function
     def train_step (self, real_A , real_B, mask_A, mask_B):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+            
             fake_B = self.generator(real_A, self.options, False, name="generatorA2B")
             fake_A_ = self.generator(fake_B, self.options, False, name="generatorB2A")
             fake_A = self.generator(real_B, self.options, True, name="generatorB2A")
@@ -214,9 +209,18 @@ class sggan(object):
         
             DB_real = self.discriminator(real_B, mask_B, self.options, reuse=True, name="discriminatorB")
             DA_real = self.discriminator(real_A, mask_A, self.options, reuse=True, name="discriminatorA")
-            DB_fake_sample = self.discriminator(self.fake_B, self.mask_B, self.options, reuse=True, name="discriminatorB")
-            DA_fake_sample = self.discriminator(self.fake_A, self.mask_A, self.options, reuse=True, name="discriminatorA")
+            DB_fake_sample = self.discriminator(fake_B, mask_B, self.options, reuse=True, name="discriminatorB")
+            DA_fake_sample = self.discriminator(fake_A, mask_A, self.options, reuse=True, name="discriminatorA")
         
+            gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B)
+            disc_loss = discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample)
+        
+        generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
+        discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+        
+        self.g_optim.apply_gradients(zip(generator_grads, self.generator.trainable_variables))
+        self.d_optim.apply_gradients(zip(discriminator_grads, self.discriminator.trainable_variables))
+
     def train(self, args):
         """Train SG-GAN"""
         self.lr = tf.placeholder(tf.float32, None, name='learning_rate')
