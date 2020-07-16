@@ -103,10 +103,10 @@ def load_train_data(image_path, image_width=512, image_height=256, num_seg_masks
     seg_A = seg_A/127.5 - 1.
     seg_B = seg_B/127.5 - 1.
 
-    img_AB = np.concatenate((img_A, img_B), axis=2)
-    seg_AB = np.concatenate((seg_A, seg_B), axis=2)
+    #img_AB = np.concatenate((img_A, img_B), axis=2)
+    #seg_AB = np.concatenate((seg_A, seg_B), axis=2)
     # img_AB shape: (image_height, image_width, input_c_dim + output_c_dim)
-    return img_AB, seg_AB, seg_mask_A, seg_mask_B
+    return image_A, image_B, seg_A, seg_B, seg_mask_A, seg_mask_B #img_AB, seg_AB, seg_mask_A, seg_mask_B
 
 # -----------------------------
 
