@@ -92,6 +92,9 @@ class sggan(object):
 
         self.DB_fake = self.discriminator(self.fake_B, self.mask_A, self.options, reuse=False, name="discriminatorB")
         self.DA_fake = self.discriminator(self.fake_A, self.mask_B, self.options, reuse=False, name="discriminatorA")
+        
+        
+        ####### LOSS #########
         self.g_loss_a2b = self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
             + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
@@ -126,6 +129,7 @@ class sggan(object):
         self.DB_fake_sample = self.discriminator(self.fake_B_sample, self.mask_B_sample, self.options, reuse=True, name="discriminatorB")
         self.DA_fake_sample = self.discriminator(self.fake_A_sample, self.mask_A_sample, self.options, reuse=True, name="discriminatorA")
 
+        ####### LOSS #########
         self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
         self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
         self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
@@ -134,6 +138,7 @@ class sggan(object):
         self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
         self.d_loss = self.da_loss + self.db_loss
 
+        ####### LOSS #########
         self.g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", self.g_loss_a2b)
         self.g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", self.g_loss_b2a)
         self.g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
@@ -165,6 +170,53 @@ class sggan(object):
         self.g_vars = [var for var in t_vars if 'generator' in var.name]
         for var in t_vars: print(var.name)
 
+    def generator_loss(self, DB_fake, DA_fake, real_A, real_B, fake_A, fake_B):
+        g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
+            + self.L1_lambda * abs_criterion(real_A, fake_A_) \
+            + self.L1_lambda * abs_criterion(real_B, fake_B_) \
+            + self.Lg_lambda * gradloss_criterion(real_A, fake_B, self.weighted_seg_A) \
+            + self.Lg_lambda * gradloss_criterion(real_B, fake_A, self.weighted_seg_B)
+        g_loss_b2a = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+            + self.L1_lambda * abs_criterion(real_A, fake_A_) \
+            + self.L1_lambda * abs_criterion(real_B, fake_B_) \
+            + self.Lg_lambda * gradloss_criterion(real_A, fake_B, self.weighted_seg_A) \
+            + self.Lg_lambda * gradloss_criterion(real_B, fake_A, self.weighted_seg_B)
+        g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+            + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
+            + self.L1_lambda * abs_criterion(real_A, fake_A_) \
+            + self.L1_lambda * abs_criterion(real_B, fake_B_) \
+            + self.Lg_lambda * gradloss_criterion(real_A, fake_B, self.weighted_seg_A) \
+            + self.Lg_lambda * gradloss_criterion(real_B, fake_A, self.weighted_seg_B)
+            
+            return g_loss
+        
+    def discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample):
+        ####### LOSS #########
+        self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
+        self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
+        self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
+        self.da_loss_real = self.criterionGAN(self.DA_real, tf.ones_like(self.DA_real))
+        self.da_loss_fake = self.criterionGAN(self.DA_fake_sample, tf.zeros_like(self.DA_fake_sample))
+        self.da_loss = (self.da_loss_real + self.da_loss_fake) / 2
+        self.d_loss = self.da_loss + self.db_loss
+        
+        return d_loss
+    
+    def train_step (self, real_A , real_B, mask_A, mask_B):
+        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+            fake_B = self.generator(real_A, self.options, False, name="generatorA2B")
+            fake_A_ = self.generator(fake_B, self.options, False, name="generatorB2A")
+            fake_A = self.generator(real_B, self.options, True, name="generatorB2A")
+            fake_B_ = self.generator(fake_A, self.options, True, name="generatorA2B")
+            
+            DB_fake = self.discriminator(fake_B, mask_A, self.options, reuse=False, name="discriminatorB")
+            DA_fake = self.discriminator(fake_A, mask_B, self.options, reuse=False, name="discriminatorA")
+        
+            DB_real = self.discriminator(real_B, mask_B, self.options, reuse=True, name="discriminatorB")
+            DA_real = self.discriminator(real_A, mask_A, self.options, reuse=True, name="discriminatorA")
+            DB_fake_sample = self.discriminator(self.fake_B, self.mask_B, self.options, reuse=True, name="discriminatorB")
+            DA_fake_sample = self.discriminator(self.fake_A, self.mask_A, self.options, reuse=True, name="discriminatorA")
+        
     def train(self, args):
         """Train SG-GAN"""
         self.lr = tf.placeholder(tf.float32, None, name='learning_rate')
@@ -173,9 +225,9 @@ class sggan(object):
         self.g_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
             .minimize(self.g_loss, var_list=self.g_vars)
 
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
-        self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
+        # init_op = tf.global_variables_initializer()
+        # self.sess.run(init_op)
+        # self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
 
         counter = 1
         start_time = time.time()
@@ -195,42 +247,56 @@ class sggan(object):
             for idx in range(0, batch_idxs):
                 batch_files = list(zip(dataA[idx * self.batch_size:(idx + 1) * self.batch_size],
                                        dataB[idx * self.batch_size:(idx + 1) * self.batch_size]))
-                batch_images = []
-                batch_segs = []
+                #batch_images = []
+                #batch_segs = []
+                batch_img_A = []
+                batch_img_B = []
+                batch_seg_A = []
+                batch_seg_B = []
                 batch_seg_mask_A = []
                 batch_seg_mask_B = []
                 for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
-                    batch_images.append(tmp_image)
-                    batch_segs.append(tmp_seg)
+                    #tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
+                    tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B
+                    #batch_images.append(tmp_image)
+                    #batch_segs.append(tmp_seg)
+                    batch_img_A.append(tmp_imgA)
+                    batch_img_B.append(tmp_imgB)
+                    batch_seg_A.append(tmp_segA)
+                    batch_seg_B.append(tmp_segB)
                     batch_seg_mask_A.append(tmp_seg_mask_A)
                     batch_seg_mask_B.append(tmp_seg_mask_B)
-
-                batch_images = np.array(batch_images).astype(np.float32)
-                batch_segs = np.array(batch_segs).astype(np.float32)
+                    
+                #batch_images = np.array(batch_images).astype(np.float32)
+                #batch_segs = np.array(batch_segs).astype(np.float32)
+                batch_img_A = np.array(batch_img_A).astype(np.float32)
+                batch_img_B = np.array(batch_img_B).astype(np.float32)
+                batch_seg_A = np.array(batch_seg_A).astype(np.float32)
+                batch_seg_A = np.array(batch_seg_B).astype(np.float32)
                 batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
                 batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
                 
                 # Update G network and record fake outputs
-                fake_A, fake_B, fake_A_mask, fake_B_mask, _, summary_str = self.sess.run(
-                    [self.fake_A, self.fake_B, self.mask_B, self.mask_A, self.g_optim, self.g_sum],
-                    feed_dict={self.real_data: batch_images, self.lr: lr, self.seg_data: batch_segs,
-                    self.mask_A: batch_seg_mask_A, self.mask_B: batch_seg_mask_B})
-                self.writer.add_summary(summary_str, counter)
-                [fake_A, fake_B, fake_A_mask, fake_B_mask] = self.pool([fake_A, fake_B, fake_A_mask, fake_B_mask])
+                # fake_A, fake_B, fake_A_mask, fake_B_mask, _, summary_str = self.sess.run(
+                #     [self.fake_A, self.fake_B, self.mask_B, self.mask_A, self.g_optim, self.g_sum],
+                #     feed_dict={self.real_data: batch_images, self.lr: lr, self.seg_data: batch_segs,
+                #     self.mask_A: batch_seg_mask_A, self.mask_B: batch_seg_mask_B})
+                # self.writer.add_summary(summary_str, counter)
+                # [fake_A, fake_B, fake_A_mask, fake_B_mask] = self.pool([fake_A, fake_B, fake_A_mask, fake_B_mask])
                 # Update D network
-                _, summary_str = self.sess.run(
-                    [self.d_optim, self.d_sum],
-                    feed_dict={self.real_data: batch_images,
-                               self.fake_A_sample: fake_A,
-                               self.fake_B_sample: fake_B,
-                               self.mask_A_sample: fake_A_mask,
-                               self.mask_B_sample: fake_B_mask,
-                               self.mask_A: batch_seg_mask_A,
-                               self.mask_B: batch_seg_mask_B,
-                               self.lr: lr})
-                self.writer.add_summary(summary_str, counter)
-
+                # _, summary_str = self.sess.run(
+                #     [self.d_optim, self.d_sum],
+                #     feed_dict={self.real_data: batch_images,
+                #                self.fake_A_sample: fake_A,
+                #                self.fake_B_sample: fake_B,
+                #                self.mask_A_sample: fake_A_mask,
+                #                self.mask_B_sample: fake_B_mask,
+                #                self.mask_A: batch_seg_mask_A,
+                #                self.mask_B: batch_seg_mask_B,
+                #                self.lr: lr})
+                # self.writer.add_summary(summary_str, counter)
+                
+                train_step(batch_img_A, batch_img_B, batch_seg_mask_A, batch_seg_mask_B)
                 counter += 1
                 print(("Epoch: [%2d] [%4d/%4d] time: %4.4f" % (
                     epoch, idx, batch_idxs, time.time() - start_time)))
