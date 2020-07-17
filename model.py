@@ -10,8 +10,7 @@ from module import *
 from utils import *
 
 class sggan(object):
-    def __init__(self, sess, args):
-        self.sess = sess
+    def __init__(self, args):
         self.batch_size = args.batch_size
         self.image_width = args.img_width
         self.image_height = args.img_height

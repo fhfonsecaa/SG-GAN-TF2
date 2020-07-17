@@ -1,7 +1,8 @@
 import argparse
 import os
 import tensorflow as tf
-tf.set_random_seed(19)
+tf.random.set_seed(19)
+print("TensorFlow version: ",tf.__version__)
 from model import sggan
 
 parser = argparse.ArgumentParser(description='')
@@ -35,7 +36,7 @@ parser.add_argument('--segment_class', dest='segment_class', type=int, default=8
 args = parser.parse_args()
 
 
-def main(_):
+def main():
     if not os.path.exists(args.checkpoint_dir):
         os.makedirs(args.checkpoint_dir)
     if not os.path.exists(args.sample_dir):
@@ -43,12 +44,12 @@ def main(_):
     if not os.path.exists(args.test_dir):
         os.makedirs(args.test_dir)
 
-    tfconfig = tf.ConfigProto(allow_soft_placement=True)
-    tfconfig.gpu_options.allow_growth = True
-    with tf.Session(config=tfconfig) as sess:
-        model = sggan(sess, args)
-        model.train(args) if args.phase == 'train' \
-            else model.test(args)
+    # tfconfig = tf.ConfigProto(allow_soft_placement=True)
+    # tfconfig.gpu_options.allow_growth = True
+    # with tf.Session(config=tfconfig) as sess:
+    model = sggan(args)
+    model.train(args) if args.phase == 'train' \
+        else model.test(args)
 
 if __name__ == '__main__':
-    tf.app.run()
+    main()
