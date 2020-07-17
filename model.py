@@ -163,7 +163,7 @@ class sggan(object):
         
         g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", g_loss_a2b)
         g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", g_loss_b2a)
-        g_loss_sum = tf.summary.scalar("g_loss", .g_loss)
+        g_loss_sum = tf.summary.scalar("g_loss", g_loss)
         
         self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
         

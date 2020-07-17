@@ -158,7 +158,7 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
     else:
         cropped_image = image
     # return np.array(cropped_image)/127.5 - 1.
-    return np.array(cropped_image)/*2 - 1.
+    return np.array(cropped_image)*2 - 1.
 
 def inverse_transform(images):
     return (images+1.)/2.
