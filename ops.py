@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.slim as slim
 from tensorflow.python.framework import ops
 
 from utils import *
@@ -20,17 +19,17 @@ def instance_norm(input, name="instance_norm"):
         normalized = (input-mean)*inv
         return scale*normalized + offset
 
-def conv2d(input_, output_dim, ks=4, s=2, stddev=0.02, padding='SAME', name="conv2d"):
-    with tf.variable_scope(name):
-        return slim.conv2d(input_, output_dim, ks, s, padding=padding, activation_fn=None,
-                            weights_initializer=tf.truncated_normal_initializer(stddev=stddev),
-                            biases_initializer=None)
+# def conv2d(input_, output_dim, ks=4, s=2, stddev=0.02, padding='SAME', name="conv2d"):
+#     with tf.variable_scope(name):
+#         return slim.conv2d(input_, output_dim, ks, s, padding=padding, activation_fn=None,
+#                             weights_initializer=tf.truncated_normal_initializer(stddev=stddev),
+#                             biases_initializer=None)
 
-def deconv2d(input_, output_dim, ks=4, s=2, stddev=0.02, name="deconv2d"):
-    with tf.variable_scope(name):
-        return slim.conv2d_transpose(input_, output_dim, ks, s, padding='SAME', activation_fn=None,
-                                    weights_initializer=tf.truncated_normal_initializer(stddev=stddev),
-                                    biases_initializer=None)
+# def deconv2d(input_, output_dim, ks=4, s=2, stddev=0.02, name="deconv2d"):
+#     with tf.variable_scope(name):
+#         return slim.conv2d_transpose(input_, output_dim, ks, s, padding='SAME', activation_fn=None,
+#                                     weights_initializer=tf.truncated_normal_initializer(stddev=stddev),
+#                                     biases_initializer=None)
 
 def lrelu(x, leak=0.2, name="lrelu"):
     return tf.maximum(x, leak*x)
