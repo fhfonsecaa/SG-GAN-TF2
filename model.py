@@ -43,22 +43,22 @@ class sggan(object):
 
 
     def _build_model(self):
-        self.real_data = tf.placeholder(tf.float32,
-                                        [None, self.image_height, self.image_width,
-                                         self.input_c_dim + self.output_c_dim],
-                                        name='real_A_and_B_images')
-        self.seg_data = tf.placeholder(tf.float32,
-                                        [None, self.image_height, self.image_width,
-                                         self.input_c_dim + self.output_c_dim],
-                                        name='seg_A_and_B_images')
-        self.mask_A = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_A')
-        self.mask_B = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_B')
-
-
-        self.real_A = self.real_data[:, :, :, :self.input_c_dim]
-        self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
-        self.seg_A = self.seg_data[:, :, :, :self.input_c_dim]
-        self.seg_B = self.seg_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+        # MIGRATED TO TF2 #
+        # self.real_data = tf.placeholder(tf.float32,
+        #                                 [None, self.image_height, self.image_width,
+        #                                  self.input_c_dim + self.output_c_dim],
+        #                                 name='real_A_and_B_images')
+        # self.seg_data = tf.placeholder(tf.float32,
+        #                                 [None, self.image_height, self.image_width,
+        #                                  self.input_c_dim + self.output_c_dim],
+        #                                 name='seg_A_and_B_images')
+        # self.mask_A = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_A')
+        # self.mask_B = tf.placeholder(tf.float32, [None, self.image_height/8, self.image_width/8, self.segment_class], name='mask_B')
+        
+        # self.real_A = self.real_data[:, :, :, :self.input_c_dim]
+        # self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+        # self.seg_A = self.seg_data[:, :, :, :self.input_c_dim]
+        # self.seg_B = self.seg_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
 
 
         # gradient kernel for seg
@@ -67,14 +67,17 @@ class sggan(object):
         self.kernels.append( tf_kernel_prep_3d(np.array([[0,0,0],[-1,0,1],[0,0,0]]), self.input_c_dim) )
         self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), self.input_c_dim) )
         self.kernel = tf.constant(np.stack(self.kernels, axis=-1), name="DerivKernel_seg", dtype=np.float32)
-
-        self.seg_A = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        self.seg_B = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        self.conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(self.seg_A, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
-        self.conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(self.seg_B, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
+        self.weighted_seg_A = []
+        self.weighted_seg_B = []
+        
+        # self.seg_A = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        # self.seg_B = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        # self.conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(self.seg_A, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
+        # self.conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(self.seg_B, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
+        
         # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
-        self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True)))
-        self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True)))
+        #### self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True)))
+        #### self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True)))
         #self.weighted_seg_A = 0.9 * tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_A, axis=-1, keep_dims=True))) + 0.1
         #self.weighted_seg_B = 0.9 * tf.abs(tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True))) + 0.1
 
@@ -144,7 +147,15 @@ class sggan(object):
         self.g_vars = [var for var in t_vars if 'generator' in var.name]
         for var in t_vars: print(var.name)
 
-    def generator_loss(self, DB_fake, DA_fake, real_A, real_B, fake_A, fake_B):
+    def generator_loss(self, DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B):
+        segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(self.segA, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
+        conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(self.segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
+        # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
+        self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(conved_seg_A, axis=-1, keep_dims=True)))
+        self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(conved_seg_B, axis=-1, keep_dims=True)))
+        
         g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
             + self.L1_lambda * abs_criterion(real_A, fake_A_) \
             + self.L1_lambda * abs_criterion(real_B, fake_B_) \
@@ -171,8 +182,8 @@ class sggan(object):
         return g_loss
         
     def discriminator_loss(self, DB_real, DA_real, DB_fake_sample, DA_fake_sample):
-        db_loss_real = self.criterionGAN(DB_real, tf.ones_like(self.DB_real))
-        db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
+        db_loss_real = self.criterionGAN(DB_real, tf.ones_like(DB_real))
+        db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(DB_fake_sample))
         db_loss = (db_loss_real + db_loss_fake) / 2
         da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
         da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
@@ -196,9 +207,9 @@ class sggan(object):
         return d_loss
     
     @tf.function
-    def train_step (self, real_A , real_B, mask_A, mask_B):
+    def train_step (self, real_A , real_B, mask_A, mask_B, seg_A, seg_B):
+        
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            
             fake_B = self.generator(real_A, self.options, False, name="generatorA2B")
             fake_A_ = self.generator(fake_B, self.options, False, name="generatorB2A")
             fake_A = self.generator(real_B, self.options, True, name="generatorB2A")
@@ -212,7 +223,7 @@ class sggan(object):
             DB_fake_sample = self.discriminator(fake_B, mask_B, self.options, reuse=True, name="discriminatorB")
             DA_fake_sample = self.discriminator(fake_A, mask_A, self.options, reuse=True, name="discriminatorA")
         
-            gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B)
+            gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B)
             disc_loss = discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample)
         
         self.generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
@@ -276,7 +287,7 @@ class sggan(object):
                 batch_img_A = np.array(batch_img_A).astype(np.float32)
                 batch_img_B = np.array(batch_img_B).astype(np.float32)
                 batch_seg_A = np.array(batch_seg_A).astype(np.float32)
-                batch_seg_A = np.array(batch_seg_B).astype(np.float32)
+                batch_seg_B = np.array(batch_seg_B).astype(np.float32)
                 batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
                 batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
                 
@@ -301,7 +312,7 @@ class sggan(object):
                 #                self.lr: lr})
                 # self.writer.add_summary(summary_str, counter)
                 
-                self.train_step(batch_img_A, batch_img_B, batch_seg_mask_A, batch_seg_mask_B)
+                self.train_step(batch_img_A, batch_img_B, batch_seg_mask_A, batch_seg_mask_B, batch_seg_A, batch_seg_B)
                 counter += 1
                 print(("Epoch: [%2d] [%4d/%4d] time: %4.4f" % (
                     epoch, idx, batch_idxs, time.time() - start_time)))
@@ -347,35 +358,61 @@ class sggan(object):
         batch_images = []
         batch_segs = []
         for batch_file in batch_files:
-            tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
-            batch_images.append(tmp_image)
-            batch_segs.append(tmp_seg)
-               
-        batch_images = np.array(batch_images).astype(np.float32)
-        batch_segs = np.array(batch_segs).astype(np.float32)
-
-        fake_A, fake_B = self.sess.run(
-            [self.fake_A, self.fake_B],
-            feed_dict={self.real_data: batch_images, self.seg_data: batch_segs}
-        )
+            # MIGRATED TO TF2 #
+            # tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
+            # batch_images.append(tmp_image)
+            # batch_segs.append(tmp_seg)
+            
+            tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
+            batch_img_A.append(tmp_imgA)
+            batch_img_B.append(tmp_imgB)
+            batch_seg_A.append(tmp_segA)
+            batch_seg_B.append(tmp_segB)
+            batch_seg_mask_A.append(tmp_seg_mask_A)
+            batch_seg_mask_B.append(tmp_seg_mask_B)
+        
+        # MIGRATED TO TF2 #
+        # batch_images = np.array(batch_images).astype(np.float32)
+        # batch_segs = np.array(batch_segs).astype(np.float32)
+            
+        batch_img_A = np.array(batch_img_A).astype(np.float32)
+        batch_img_B = np.array(batch_img_B).astype(np.float32)
+        batch_seg_A = np.array(batch_seg_A).astype(np.float32)
+        batch_seg_B = np.array(batch_seg_B).astype(np.float32)
+        batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
+        batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
+        
+        # MIGRATED TO TF2 #
+        # fake_A, fake_B = self.sess.run(
+        #     [self.fake_A, self.fake_B],
+        #     feed_dict={self.real_data: batch_images, self.seg_data: batch_segs}
+        # )
+        
+        fake_A, fake_B = self.generate_test_images(batch_img_A, batch_img_B, batch_seg_A, batch_seg_B)
         save_images(fake_A, [self.batch_size, 1],
                     './{}/A_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][1].split("/")[-1].split(".")[0]))
         save_images(fake_B, [self.batch_size, 1],
                     './{}/B_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][0].split("/")[-1].split(".")[0]))
 
     @tf.function
-    def generate_test_images(self, sample_imgA, sample_imgB, which_direction):
+    def generate_test_images(self, sample_imgA, sample_imgB, seg_A, seg_B):
+        segA = tf.pad(seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        segB = tf.pad(seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(segA, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
+        conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
+        # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
+        self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(conved_seg_A, axis=-1, keep_dims=True)))
+        self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(conved_seg_B, axis=-1, keep_dims=True)))
+        
         test_A = sample_imgA
         test_B = sample_imgB
         
-        if which_direction == 'AtoB':
-            testB = self.generator(test_A, self.options, True, name="generatorA2B")
-            return testB
-        elif which_direction:
-            testA = self.generator(test_B, self.options, True, name="generatorB2A")
-            return testA
-        else:
-            raise Exception('--which_direction must be AtoB or BtoA')
+        # direction == 'AtoB'
+        testB = self.generator(test_A, self.options, True, name="generatorA2B")
+        # direction == 'BtoA'
+        testA = self.generator(test_B, self.options, True, name="generatorB2A")
+        
+        return testB, testA
         
     def test(self, args):
         """Test SG-GAN"""
@@ -418,7 +455,11 @@ class sggan(object):
             
             # MIGRATED TO TF2 #
             # fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})
-            fake_img = self.generate_test_images(sample_imgA, sample_imgB)
+            fake_A, fake_B = self.generate_test_images(sample_imgA, sample_imgB)
+            if args.which_direction == 'AtoB':
+                fake_img = fake_A
+            else:
+                fake_img = fake_B
             
             image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
