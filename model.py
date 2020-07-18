@@ -84,7 +84,7 @@ class sggan(object):
         #self.weighted_seg_B = 0.9 * tf.sign(tf.reduce_sum(self.conved_seg_B, axis=-1, keep_dims=True)) + 0.1
         
         
-        # Loss #
+        # Loss # # MIGRATED TO TF2 #
         # self.g_loss_a2b = self.criterionGAN(self.DB_fake, tf.ones_like(self.DB_fake)) \
         #     + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
         #     + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
@@ -103,7 +103,7 @@ class sggan(object):
         #     + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
 
         
-        # Loss #
+        # Loss # # MIGRATED TO TF2 #
         # self.db_loss_real = self.criterionGAN(self.DB_real, tf.ones_like(self.DB_real))
         # self.db_loss_fake = self.criterionGAN(self.DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
         # self.db_loss = (self.db_loss_real + self.db_loss_fake) / 2
@@ -129,14 +129,15 @@ class sggan(object):
         #      self.d_loss_sum]
         # )
 
-        self.test_A = tf.placeholder(tf.float32,
-                                     [None, self.image_height, self.image_width,
-                                      self.input_c_dim], name='test_A')
-        self.test_B = tf.placeholder(tf.float32,
-                                     [None, self.image_height, self.image_width,
-                                      self.output_c_dim], name='test_B')
-        self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
-        self.testA = self.generator(self.test_B, self.options, True, name="generatorB2A")
+        # MIGRATED TO TF2 #
+        # self.test_A = tf.placeholder(tf.float32,
+        #                              [None, self.image_height, self.image_width,
+        #                               self.input_c_dim], name='test_A')
+        # self.test_B = tf.placeholder(tf.float32,
+        #                              [None, self.image_height, self.image_width,
+        #                               self.output_c_dim], name='test_B')
+        # self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
+        # self.testA = self.generator(self.test_B, self.options, True, name="generatorB2A")
 
         t_vars = tf.trainable_variables()
         self.d_vars = [var for var in t_vars if 'discriminator' in var.name]
@@ -169,7 +170,7 @@ class sggan(object):
         
         return g_loss
         
-    def discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample):
+    def discriminator_loss(self, DB_real, DA_real, DB_fake_sample, DA_fake_sample):
         db_loss_real = self.criterionGAN(DB_real, tf.ones_like(self.DB_real))
         db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(self.DB_fake_sample))
         db_loss = (db_loss_real + db_loss_fake) / 2
@@ -214,8 +215,8 @@ class sggan(object):
             gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B)
             disc_loss = discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample)
         
-        generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
-        discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+        self.generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
+        self.discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
         
         self.g_optim.apply_gradients(zip(generator_grads, self.generator.trainable_variables))
         self.d_optim.apply_gradients(zip(discriminator_grads, self.discriminator.trainable_variables))
@@ -260,7 +261,7 @@ class sggan(object):
                 batch_seg_mask_B = []
                 for batch_file in batch_files:
                     #tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
-                    tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B
+                    tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
                     #batch_images.append(tmp_image)
                     #batch_segs.append(tmp_seg)
                     batch_img_A.append(tmp_imgA)
@@ -279,6 +280,7 @@ class sggan(object):
                 batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
                 batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
                 
+                # MIGRATED TO TF2 #
                 # Update G network and record fake outputs
                 # fake_A, fake_B, fake_A_mask, fake_B_mask, _, summary_str = self.sess.run(
                 #     [self.fake_A, self.fake_B, self.mask_B, self.mask_A, self.g_optim, self.g_sum],
@@ -299,7 +301,7 @@ class sggan(object):
                 #                self.lr: lr})
                 # self.writer.add_summary(summary_str, counter)
                 
-                train_step(batch_img_A, batch_img_B, batch_seg_mask_A, batch_seg_mask_B)
+                self.train_step(batch_img_A, batch_img_B, batch_seg_mask_A, batch_seg_mask_B)
                 counter += 1
                 print(("Epoch: [%2d] [%4d/%4d] time: %4.4f" % (
                     epoch, idx, batch_idxs, time.time() - start_time)))
@@ -361,10 +363,26 @@ class sggan(object):
         save_images(fake_B, [self.batch_size, 1],
                     './{}/B_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][0].split("/")[-1].split(".")[0]))
 
+    @tf.function
+    def generate_test_images(self, sample_imgA, sample_imgB, which_direction):
+        test_A = sample_imgA
+        test_B = sample_imgB
+        
+        if which_direction == 'AtoB':
+            testB = self.generator(test_A, self.options, True, name="generatorA2B")
+            return testB
+        elif which_direction:
+            testA = self.generator(test_B, self.options, True, name="generatorB2A")
+            return testA
+        else:
+            raise Exception('--which_direction must be AtoB or BtoA')
+        
     def test(self, args):
         """Test SG-GAN"""
-        init_op = tf.global_variables_initializer()
-        self.sess.run(init_op)
+        
+        # init_op = tf.global_variables_initializer()
+        # self.sess.run(init_op)
+        
         if args.which_direction == 'AtoB':
             sample_files = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
         elif args.which_direction == 'BtoA':
@@ -382,16 +400,27 @@ class sggan(object):
         index = open(index_path, "w")
         index.write("<html><body><table><tr>")
         index.write("<th>name</th><th>input</th><th>output</th></tr>")
-
-        out_var, in_var = (self.testB, self.test_A) if args.which_direction == 'AtoB' else (
-            self.testA, self.test_B)
-
+        
+        # MIGRATED TO TF2 #
+        # out_var, in_var = (self.testB, self.test_A) if args.which_direction == 'AtoB' else (
+        #     self.testA, self.test_B)
+        
         for sample_file in sample_files:
             print('Processing image: ' + sample_file)
-            sample_image = [load_test_data(sample_file, args.img_width, args.img_height)]
-            sample_image = np.array(sample_image).astype(np.float32)
+            # sample_image = [load_test_data(sample_file, args.img_width, args.img_height)]
+            # sample_image = np.array(sample_image).astype(np.float32)
+            
+            sample_imgA, sample_imgB, sample_segA, sample_segB, _ , _ = load_train_data(sample_file, args.img_width, args.img_height, is_testing=True)
+            sample_imgA = np.array(batch_img_A).astype(np.float32)
+            sample_imgB = np.array(batch_img_B).astype(np.float32)
+            sample_segA = np.array(batch_seg_A).astype(np.float32)
+            sample_segB = np.array(batch_seg_B).astype(np.float32)
+            
+            # MIGRATED TO TF2 #
+            # fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})
+            fake_img = self.generate_test_images(sample_imgA, sample_imgB)
+            
             image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
-            fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
             save_images(sample_image, [1, 1], real_image_copy)
             save_images(fake_img, [1, 1], image_path)
