@@ -226,11 +226,11 @@ class sggan(object):
             gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B)
             disc_loss = discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample)
         
-        self.generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
-        self.discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+        self.generator_grads = gen_tape.gradient(gen_loss, self.d_vars)
+        self.discriminator_grads = disc_tape.gradient(disc_loss, self.d_vars)
         
-        self.g_optim.apply_gradients(zip(generator_grads, self.generator.trainable_variables))
-        self.d_optim.apply_gradients(zip(discriminator_grads, self.discriminator.trainable_variables))
+        self.g_optim.apply_gradients(zip(generator_grads, self.g_vars))
+        self.d_optim.apply_gradients(zip(discriminator_grads, self.g_vars))
 
     def train(self, args):
         """Train SG-GAN"""
