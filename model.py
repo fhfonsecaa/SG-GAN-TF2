@@ -21,19 +21,15 @@ class sggan(object):
         self.dataset_dir = args.dataset_dir
         self.segment_class = args.segment_class
 
-        self.discriminator = discriminator()
+        self.discriminator = discriminator
         if args.use_resnet:
-            self.generator = generator_resnet()
+            self.generator = generator_resnet
         else:
-            self.generator = generator_unet()
+            self.generator = generator_unet
         if args.use_lsgan:
             self.criterionGAN = mae_criterion
         else:
             self.criterionGAN = sce_criterion
-
-        # tf.keras.utils.plot_model(self.discriminator, 'multi_input_and_output_model.png', show_shapes=True)
-        # input("")
-
 
         OPTIONS = namedtuple('OPTIONS', 'batch_size image_height image_width \
                               gf_dim df_dim output_c_dim is_training segment_class')
@@ -42,6 +38,7 @@ class sggan(object):
                                       args.phase == 'train', args.segment_class))
 
         self._build_model()
+        self.saver = tf.train.Saver()
         self.pool = ImagePool(args.max_size)
 
 
@@ -145,12 +142,16 @@ class sggan(object):
         # self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
         # self.testA = self.generator(self.test_B, self.options, True, name="generatorB2A")
 
+        t_vars = tf.trainable_variables()
+        self.d_vars = [var for var in t_vars if 'discriminator' in var.name]
+        self.g_vars = [var for var in t_vars if 'generator' in var.name]
+        for var in t_vars: print(var.name)
 
     def generator_loss(self, DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B):
-        segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(self.segA, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
-        conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(self.segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
+        segA = tf.pad(seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        segB = tf.pad(seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(segA, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
+        conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
         # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
         self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(conved_seg_A, axis=-1, keep_dims=True)))
         self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(conved_seg_B, axis=-1, keep_dims=True)))
@@ -165,7 +166,7 @@ class sggan(object):
             + self.L1_lambda * abs_criterion(real_B, fake_B_) \
             + self.Lg_lambda * gradloss_criterion(real_A, fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(real_B, fake_A, self.weighted_seg_B)
-        self.g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+        g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
             + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
             + self.L1_lambda * abs_criterion(real_A, fake_A_) \
             + self.L1_lambda * abs_criterion(real_B, fake_B_) \
@@ -187,7 +188,7 @@ class sggan(object):
         da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
         da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
         da_loss = (da_loss_real + da_loss_fake) / 2
-        self.d_loss = da_loss + db_loss
+        d_loss = da_loss + db_loss
         
         db_loss_sum = tf.summary.scalar("db_loss", db_loss)
         da_loss_sum = tf.summary.scalar("da_loss", da_loss)
@@ -209,35 +210,35 @@ class sggan(object):
     def train_step (self, real_A , real_B, mask_A, mask_B, seg_A, seg_B):
         
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            fake_B = self.generator(real_A)
-            fake_A_ = self.generator(fake_B)
-            fake_A = self.generator(real_B)
-            fake_B_ = self.generator(fake_A)
+            fake_B = self.generator(real_A, self.options, False, name="generatorA2B")
+            fake_A_ = self.generator(fake_B, self.options, False, name="generatorB2A")
+            fake_A = self.generator(real_B, self.options, True, name="generatorB2A")
+            fake_B_ = self.generator(fake_A, self.options, True, name="generatorA2B")
             
-            db_fake = self.discriminator([fake_B, mask_A])
-            da_fake = self.discriminator([fake_A, mask_B])
+            DB_fake = self.discriminator(fake_B, mask_A, self.options, reuse=False, name="discriminatorB")
+            DA_fake = self.discriminator(fake_A, mask_B, self.options, reuse=False, name="discriminatorA")
         
-            db_real = self.discriminator([real_B, mask_B])
-            da_real = self.discriminator([real_A, mask_A])
-            db_fake = self.discriminator([fake_B, mask_B])
-            da_fake_sample = self.discriminator([fake_A, mask_A])
+            DB_real = self.discriminator(real_B, mask_B, self.options, reuse=True, name="discriminatorB")
+            DA_real = self.discriminator(real_A, mask_A, self.options, reuse=True, name="discriminatorA")
+            DB_fake_sample = self.discriminator(fake_B, mask_B, self.options, reuse=True, name="discriminatorB")
+            DA_fake_sample = self.discriminator(fake_A, mask_A, self.options, reuse=True, name="discriminatorA")
         
-            gen_loss = self.generator_loss(db_fake,da_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B)
-            disc_loss = self.discriminator_loss(db_real, da_real, db_fake_sample, da_fake_sample)
+            gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B)
+            disc_loss = discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample)
         
-        generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
-        discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+        self.generator_grads = gen_tape.gradient(gen_loss, self.d_vars)
+        self.discriminator_grads = disc_tape.gradient(disc_loss, self.d_vars)
         
         self.g_optim.apply_gradients(zip(generator_grads, self.g_vars))
         self.d_optim.apply_gradients(zip(discriminator_grads, self.g_vars))
 
     def train(self, args):
         """Train SG-GAN"""
-        self.lr = 0.001
-        self.d_optim = tf.keras.optimizers.Adam(learning_rate=self.lr, beta_1=args.beta1)
-            # .minimize(self.d_loss, var_list=self.discriminator.trainable_variables)
-        self.g_optim = tf.keras.optimizers.Adam(learning_rate=self.lr, beta_1=args.beta1)
-            # .minimize(self.g_loss, var_list=self.generator.trainable_variables)
+        self.lr = tf.placeholder(tf.float32, None, name='learning_rate')
+        self.d_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
+            .minimize(self.d_loss, var_list=self.d_vars)
+        self.g_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
+            .minimize(self.g_loss, var_list=self.g_vars)
 
         # init_op = tf.global_variables_initializer()
         # self.sess.run(init_op)
@@ -271,7 +272,7 @@ class sggan(object):
                 batch_seg_mask_B = []
                 for batch_file in batch_files:
                     #tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
-                    tmp_imgA, tmp_imgB, tmp_segA, tmp_segB, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
+                    tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class)
                     #batch_images.append(tmp_image)
                     #batch_segs.append(tmp_seg)
                     batch_img_A.append(tmp_imgA)
@@ -320,38 +321,33 @@ class sggan(object):
                     self.sample_model(args.sample_dir, epoch, idx)
 
                 if np.mod(counter, args.save_freq) == 2:
-                    self.save(args.checkpoint_dir)
+                    self.save(args.checkpoint_dir, counter)
 
-    def save(self, checkpoint_dir):
-        model_name = "sggan_gene.model"
+    def save(self, checkpoint_dir, step):
+        model_name = "sggan.model"
         model_dir = "%s" % self.dataset_dir
-        checkpoint_gene_dir = os.path.join(checkpoint_dir, model_dir)
-        model_name = "sggan_disc.model"
-        checkpoint_disc_dir = os.path.join(checkpoint_dir, model_dir)
+        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
-        if not os.path.exists(checkpoint_gene_dir):
-            os.makedirs(checkpoint_gene_dir)
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
 
-        if not os.path.exists(checkpoint_disc_dir):
-            os.makedirs(checkpoint_disc_dir)
+        self.saver.save(self.sess,
+                        os.path.join(checkpoint_dir, model_name),
+                        global_step=step)
 
-        self.generator.save(checkpoint_gene_dir)
-        self.discriminator.save(checkpoint_disc_dir)
+    def load(self, checkpoint_dir):
+        print(" [*] Reading checkpoint...")
 
-    # TODO
-    # def load(self, checkpoint_dir):
-    #     print(" [*] Reading checkpoint...")
+        model_dir = "%s" % self.dataset_dir
+        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
-    #     model_dir = "%s" % self.dataset_dir
-    #     checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
-
-    #     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-    #     if ckpt and ckpt.model_checkpoint_path:
-    #         ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-    #         self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-    #         return True
-    #     else:
-    #         return False
+        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+            self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+            return True
+        else:
+            return False
 
     def sample_model(self, sample_dir, epoch, idx):
         dataA = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
