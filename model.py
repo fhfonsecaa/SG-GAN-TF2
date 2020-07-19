@@ -73,8 +73,8 @@ class sggan(object):
         self.weighted_seg_A = []
         self.weighted_seg_B = []
         
-        # self.seg_A = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        # self.seg_B = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        # self.seg_A = tf.pad(seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        # self.seg_B = tf.pad(seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
         # self.conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(self.seg_A, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
         # self.conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(self.seg_B, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
         
