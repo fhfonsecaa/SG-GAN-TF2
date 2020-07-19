@@ -141,10 +141,6 @@ class sggan(object):
         # self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
         # self.testA = self.generator(self.test_B, self.options, True, name="generatorB2A")
 
-        t_vars = tf.trainable_variables()
-        self.d_vars = [var for var in t_vars if 'discriminator' in var.name]
-        self.g_vars = [var for var in t_vars if 'generator' in var.name]
-        for var in t_vars: print(var.name)
 
     def generator_loss(self, DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B):
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
@@ -165,7 +161,7 @@ class sggan(object):
             + self.L1_lambda * abs_criterion(real_B, fake_B_) \
             + self.Lg_lambda * gradloss_criterion(real_A, fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(real_B, fake_A, self.weighted_seg_B)
-        g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+        self.g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
             + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
             + self.L1_lambda * abs_criterion(real_A, fake_A_) \
             + self.L1_lambda * abs_criterion(real_B, fake_B_) \
@@ -187,7 +183,7 @@ class sggan(object):
         da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
         da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
         da_loss = (da_loss_real + da_loss_fake) / 2
-        d_loss = da_loss + db_loss
+        self.d_loss = da_loss + db_loss
         
         db_loss_sum = tf.summary.scalar("db_loss", db_loss)
         da_loss_sum = tf.summary.scalar("da_loss", da_loss)
@@ -225,19 +221,19 @@ class sggan(object):
             gen_loss = generator_loss(DB_fake, DA_fake, real_A, real_B, fake_A, fake_B, seg_A, seg_B)
             disc_loss = discriminator_loss(DB_real, DA_real, DB_fake_sample, DA_fake_sample)
         
-        self.generator_grads = gen_tape.gradient(gen_loss, self.d_vars)
-        self.discriminator_grads = disc_tape.gradient(disc_loss, self.d_vars)
+        self.generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
+        self.discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
         
         self.g_optim.apply_gradients(zip(generator_grads, self.g_vars))
         self.d_optim.apply_gradients(zip(discriminator_grads, self.g_vars))
 
     def train(self, args):
         """Train SG-GAN"""
-        self.lr = tf.placeholder(tf.float32, None, name='learning_rate')
-        self.d_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
-            .minimize(self.d_loss, var_list=self.d_vars)
-        self.g_optim = tf.train.AdamOptimizer(self.lr, beta1=args.beta1) \
-            .minimize(self.g_loss, var_list=self.g_vars)
+        self.lr = 0.001
+        self.d_optim = tf.keras.optimizers.Adam(learning_rate=self.lr, beta_1=args.beta1)
+            # .minimize(self.d_loss, var_list=self.discriminator.trainable_variables)
+        self.g_optim = tf.keras.optimizers.Adam(learning_rate=self.lr, beta_1=args.beta1)
+            # .minimize(self.g_loss, var_list=self.generator.trainable_variables)
 
         # init_op = tf.global_variables_initializer()
         # self.sess.run(init_op)
