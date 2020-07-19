@@ -38,7 +38,6 @@ class sggan(object):
                                       args.phase == 'train', args.segment_class))
 
         self._build_model()
-        self.saver = tf.train.Saver()
         self.pool = ImagePool(args.max_size)
 
 
@@ -321,33 +320,38 @@ class sggan(object):
                     self.sample_model(args.sample_dir, epoch, idx)
 
                 if np.mod(counter, args.save_freq) == 2:
-                    self.save(args.checkpoint_dir, counter)
+                    self.save(args.checkpoint_dir)
 
-    def save(self, checkpoint_dir, step):
-        model_name = "sggan.model"
+    def save(self, checkpoint_dir):
+        model_name = "sggan_gene.model"
         model_dir = "%s" % self.dataset_dir
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+        checkpoint_gene_dir = os.path.join(checkpoint_dir, model_dir)
+        model_name = "sggan_disc.model"
+        checkpoint_disc_dir = os.path.join(checkpoint_dir, model_dir)
 
-        if not os.path.exists(checkpoint_dir):
-            os.makedirs(checkpoint_dir)
+        if not os.path.exists(checkpoint_gene_dir):
+            os.makedirs(checkpoint_gene_dir)
 
-        self.saver.save(self.sess,
-                        os.path.join(checkpoint_dir, model_name),
-                        global_step=step)
+        if not os.path.exists(checkpoint_disc_dir):
+            os.makedirs(checkpoint_disc_dir)
 
-    def load(self, checkpoint_dir):
-        print(" [*] Reading checkpoint...")
+        self.generator.save(checkpoint_gene_dir)
+        self.discriminator.save(checkpoint_disc_dir)
 
-        model_dir = "%s" % self.dataset_dir
-        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+    # TODO
+    # def load(self, checkpoint_dir):
+    #     print(" [*] Reading checkpoint...")
 
-        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-        if ckpt and ckpt.model_checkpoint_path:
-            ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-            self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-            return True
-        else:
-            return False
+    #     model_dir = "%s" % self.dataset_dir
+    #     checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+
+    #     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+    #     if ckpt and ckpt.model_checkpoint_path:
+    #         ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+    #         self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+    #         return True
+    #     else:
+    #         return False
 
     def sample_model(self, sample_dir, epoch, idx):
         dataA = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
