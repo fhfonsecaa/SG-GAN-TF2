@@ -159,16 +159,12 @@ class sggan(object):
     def generator_loss(self, DB_fake, DA_fake):
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
         segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        print(segA.shape)
-        print(type(segA))
-        print(self.kernel.shape)
-        input("Holis")
 
         conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
         conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
         # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
-        self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(conved_seg_A, axis=-1, keep_dims=True)))
-        self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(conved_seg_B, axis=-1, keep_dims=True)))
+        self.weighted_seg_A = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_A, axis=-1, keepdims=True)))
+        self.weighted_seg_B = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_B, axis=-1, keepdims=True)))
         
         g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, fake_A_) \
