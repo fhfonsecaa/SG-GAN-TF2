@@ -74,6 +74,11 @@ class sggan(object):
         self.seg_B = self.seg_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
 
 
+        #fake_A
+        self.fake_A = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(None, self.image_height, self.image_width, self.input_c_dim), name="fake_A_sample")
+        #fake_B
+        self.fake_B = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(None, self.image_height, self.image_width, self.output_c_dim), name="fake_B_sample")
+
         # gradient kernel for seg
         # assume input_c_dim == output_c_dim
         self.kernels = []
@@ -82,6 +87,7 @@ class sggan(object):
         self.kernel = tf.constant(np.stack(self.kernels, axis=-1), name="DerivKernel_seg", dtype=np.float32)
         self.weighted_seg_A = []
         self.weighted_seg_B = []
+
         
         # self.seg_A = tf.pad(seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
         # self.seg_B = tf.pad(seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
@@ -167,29 +173,29 @@ class sggan(object):
         self.weighted_seg_B = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_B, axis=-1, keepdims=True)))
         
         g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, fake_B_) \
+            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
             + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
         g_loss_b2a = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, fake_B_) \
+            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
             + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
         self.g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
             + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
-            + self.L1_lambda * abs_criterion(self.real_A, fake_A_) \
-            + self.L1_lambda * abs_criterion(self.real_B, fake_B_) \
+            + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+            + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
             + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
         
-        g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", g_loss_a2b)
-        g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", g_loss_b2a)
-        g_loss_sum = tf.summary.scalar("g_loss", g_loss)
+        # g_loss_a2b_sum = tf.summary.scalar("g_loss_a2b", g_loss_a2b)
+        # g_loss_b2a_sum = tf.summary.scalar("g_loss_b2a", g_loss_b2a)
+        # g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         
-        self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
+        # self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
         
-        return g_loss
+        return self.g_loss+g_loss_b2a+g_loss_a2b
         
     def discriminator_loss(self, DB_real, DA_real, DB_fake_sample, DA_fake_sample):
         db_loss_real = self.criterionGAN(DB_real, tf.ones_like(DB_real))
@@ -200,38 +206,38 @@ class sggan(object):
         da_loss = (da_loss_real + da_loss_fake) / 2
         self.d_loss = da_loss + db_loss
         
-        db_loss_sum = tf.summary.scalar("db_loss", db_loss)
-        da_loss_sum = tf.summary.scalar("da_loss", da_loss)
-        d_loss_sum = tf.summary.scalar("d_loss", d_loss)
-        db_loss_real_sum = tf.summary.scalar("db_loss_real", db_loss_real)
-        db_loss_fake_sum = tf.summary.scalar("db_loss_fake", db_loss_fake)
-        da_loss_real_sum = tf.summary.scalar("da_loss_real", da_loss_real)
-        da_loss_fake_sum = tf.summary.scalar("da_loss_fake", da_loss_fake)
+        # db_loss_sum = tf.summary.scalar("db_loss", db_loss)
+        # da_loss_sum = tf.summary.scalar("da_loss", da_loss)
+        # d_loss_sum = tf.summary.scalar("d_loss", d_loss)
+        # db_loss_real_sum = tf.summary.scalar("db_loss_real", db_loss_real)
+        # db_loss_fake_sum = tf.summary.scalar("db_loss_fake", db_loss_fake)
+        # da_loss_real_sum = tf.summary.scalar("da_loss_real", da_loss_real)
+        # da_loss_fake_sum = tf.summary.scalar("da_loss_fake", da_loss_fake)
         
-        self.d_sum = tf.summary.merge(
-            [da_loss_sum, da_loss_real_sum, da_loss_fake_sum,
-             db_loss_sum, db_loss_real_sum, db_loss_fake_sum,
-             d_loss_sum]
-        )
+        # self.d_sum = tf.summary.merge(
+        #     [da_loss_sum, da_loss_real_sum, da_loss_fake_sum,
+        #      db_loss_sum, db_loss_real_sum, db_loss_fake_sum,
+        #      d_loss_sum]
+        # )
         
-        return d_loss
+        return self.d_loss
     
     @tf.function
     def train_step (self):
         
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            fake_B = self.generator(self.real_A)
-            fake_A_ = self.generator(fake_B)
-            fake_A = self.generator(self.real_B)
-            fake_B_ = self.generator(fake_A)
+            self.fake_B = self.generator(self.real_A)
+            self.fake_A_ = self.generator(self.fake_B)
+            self.fake_A = self.generator(self.real_B)
+            self.fake_B_ = self.generator(self.fake_A)
             
-            db_fake = self.discriminator([fake_B, self.mask_A])
-            da_fake = self.discriminator([fake_A, self.mask_B])
+            db_fake = self.discriminator([self.fake_B, self.mask_A])
+            da_fake = self.discriminator([self.fake_A, self.mask_B])
         
             db_real = self.discriminator([self.real_B, self.mask_B])
             da_real = self.discriminator([self.real_A, self.mask_A])
-            db_fake = self.discriminator([fake_B, self.mask_B])
-            da_fake_sample = self.discriminator([fake_A, self.mask_A])
+            db_fake_sample = self.discriminator([self.fake_B, self.mask_B])
+            da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
         
             gen_loss = self.generator_loss(db_fake,da_fake)
             disc_loss = self.discriminator_loss(db_real, da_real, db_fake_sample, da_fake_sample)
@@ -239,8 +245,8 @@ class sggan(object):
         generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
         discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
         
-        self.g_optim.apply_gradients(zip(generator_grads, self.g_vars))
-        self.d_optim.apply_gradients(zip(discriminator_grads, self.g_vars))
+        self.g_optim.apply_gradients(zip(generator_grads, self.generator.trainable_variables))
+        self.d_optim.apply_gradients(zip(discriminator_grads, self.discriminator.trainable_variables))
 
     def train(self, args):
         """Train SG-GAN"""
@@ -262,6 +268,7 @@ class sggan(object):
         else:
             print(" [!] Load failed...")
         for epoch in range(args.epoch):
+            print("Episode Number: ", counter)
             dataA = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainA'))
             dataB = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainB'))
             np.random.shuffle(dataA)
@@ -390,26 +397,26 @@ class sggan(object):
         batch_segs = []
         for batch_file in batch_files:
             # MIGRATED TO TF2 #
-            # tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
-            # batch_images.append(tmp_image)
-            # batch_segs.append(tmp_seg)
+            tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
+            batch_images.append(tmp_image)
+            batch_segs.append(tmp_seg)
             
-            tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
-            batch_img_A.append(tmp_imgA)
-            batch_img_B.append(tmp_imgB)
-            batch_seg_A.append(tmp_segA)
-            batch_seg_B.append(tmp_segB)
+            # tmp_imgA, tmp_imgB, tmp_segA, temp_segB, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
+            # batch_img_A.append(tmp_imgA)
+            # batch_img_B.append(tmp_imgB)
+            # batch_seg_A.append(tmp_segA)
+            # batch_seg_B.append(tmp_segB)
             batch_seg_mask_A.append(tmp_seg_mask_A)
             batch_seg_mask_B.append(tmp_seg_mask_B)
         
         # MIGRATED TO TF2 #
-        # batch_images = np.array(batch_images).astype(np.float32)
-        # batch_segs = np.array(batch_segs).astype(np.float32)
+        batch_images = np.array(batch_images).astype(np.float32)
+        batch_segs = np.array(batch_segs).astype(np.float32)
             
-        batch_img_A = np.array(batch_img_A).astype(np.float32)
-        batch_img_B = np.array(batch_img_B).astype(np.float32)
-        batch_seg_A = np.array(batch_seg_A).astype(np.float32)
-        batch_seg_B = np.array(batch_seg_B).astype(np.float32)
+        # batch_img_A = np.array(batch_img_A).astype(np.float32)
+        # batch_img_B = np.array(batch_img_B).astype(np.float32)
+        # batch_seg_A = np.array(batch_seg_A).astype(np.float32)
+        # batch_seg_B = np.array(batch_seg_B).astype(np.float32)
         batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
         batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
         
