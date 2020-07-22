@@ -165,6 +165,7 @@ class sggan(object):
     def generator_loss(self, DB_fake, DA_fake):
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
         segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        print("Holis")
 
         conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
         conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
@@ -177,11 +178,14 @@ class sggan(object):
             + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
             + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
+
         g_loss_b2a = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
             + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
             + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
+        print("Holis")
+
         self.g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
             + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
@@ -194,6 +198,11 @@ class sggan(object):
         # g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         
         # self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
+        print("holis")
+        print(self.g_loss)
+        print(g_loss_b2a)
+        print(g_loss_a2b)
+        print(self.g_loss+g_loss_b2a+g_loss_a2b)
         
         return self.g_loss+g_loss_b2a+g_loss_a2b
         
@@ -241,7 +250,7 @@ class sggan(object):
         
             gen_loss = self.generator_loss(db_fake,da_fake)
             disc_loss = self.discriminator_loss(db_real, da_real, db_fake_sample, da_fake_sample)
-        
+
         generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
         discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
         
