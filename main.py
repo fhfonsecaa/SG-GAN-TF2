@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 tf.random.set_seed(19)
 print("TensorFlow version: ",tf.__version__)
+
 from model import sggan
 
 parser = argparse.ArgumentParser(description='')

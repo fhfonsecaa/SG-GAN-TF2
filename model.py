@@ -161,11 +161,10 @@ class sggan(object):
         # self.testB = self.generator(self.test_A, self.options, True, name="generatorA2B")
         # self.testA = self.generator(self.test_B, self.options, True, name="generatorB2A")
 
-
+    @tf.function
     def generator_loss(self, DB_fake, DA_fake):
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
         segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        print("Holis")
 
         conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
         conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
@@ -184,9 +183,8 @@ class sggan(object):
             + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
             + self.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
             + self.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)
-        print("Holis")
 
-        self.g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+        g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
             + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
             + self.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
             + self.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
@@ -198,7 +196,6 @@ class sggan(object):
         # g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         
         # self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
-        print("holis")
         print(self.g_loss)
         print(g_loss_b2a)
         print(g_loss_a2b)
@@ -206,6 +203,7 @@ class sggan(object):
         
         return self.g_loss+g_loss_b2a+g_loss_a2b
         
+    @tf.function
     def discriminator_loss(self, DB_real, DA_real, DB_fake_sample, DA_fake_sample):
         db_loss_real = self.criterionGAN(DB_real, tf.ones_like(DB_real))
         db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(DB_fake_sample))
@@ -231,9 +229,7 @@ class sggan(object):
         
         return self.d_loss
     
-    @tf.function
     def train_step (self):
-        
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             self.fake_B = self.generator(self.real_A)
             self.fake_A_ = self.generator(self.fake_B)
