@@ -231,7 +231,10 @@ class sggan(object):
     
     def train_step (self):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            self.fake_B = self.generator(self.real_A)
+            sample = tf.zeros([1,32,32,3], tf.float32)
+
+            self.fake_B = self.generator(sample)
+            input("dvv")
             self.fake_A_ = self.generator(self.fake_B)
             self.fake_A = self.generator(self.real_B)
             self.fake_B_ = self.generator(self.fake_A)
@@ -246,6 +249,7 @@ class sggan(object):
         
             gen_loss = self.generator_loss(db_fake,da_fake)
             disc_loss = self.discriminator_loss(db_real, da_real, db_fake_sample, da_fake_sample)
+        print("HOLAAAAAAAAAAAAA")
 
         generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
         discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)

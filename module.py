@@ -14,7 +14,7 @@ def generator_unet():
 
   dropout_rate = 0.5 if is_training else 1.0
   
-  inputs = tf.keras.layers.Input(shape=(256,512,3,))
+  inputs = tf.keras.layers.Input(shape=(32,32,3,))
 
   e1 = tf.keras.layers.Conv2D(gf_dim, (3, 3), padding="same")(inputs)
   e1 = tfa.layers.InstanceNormalization() (e1)
