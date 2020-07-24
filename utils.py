@@ -61,7 +61,7 @@ def one_hot(image_in, num_classes=8):
   hot[layer_idx, component_idx, image_in] = 1
   return hot.astype(np.int)
 
-def load_train_data(image_path, image_width=512, image_height=256, num_seg_masks=8, is_testing=False):
+def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False):
     img_A = imread(image_path[0])
     img_B = imread(image_path[1])
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))

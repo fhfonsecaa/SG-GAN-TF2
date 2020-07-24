@@ -8,6 +8,7 @@ from ops import *
 from utils import *
 
 def generator_unet():
+  print("generator_unet")
   gf_dim = 64
   output_c_dim = 3 
   is_training = True
@@ -99,10 +100,11 @@ def residule_block(x, dim, ks=3, s=1):
   return y + x
 
 def generator_resnet():
+  print("generator_resnet")
   gf_dim = 64
   output_c_dim = 3 
   
-  inputs = tf.keras.layers.Input(shape=(256,512,3,))
+  inputs = tf.keras.layers.Input(shape=(32,32,3,))
   
   # Justin Johnson's model from https://github.com/jcjohnson/fast-neural-style/
   # The network with 9 blocks consists of: c7s1-32, d64, d128, R128, R128, R128,
@@ -150,14 +152,15 @@ def generator_resnet():
 
 
 def discriminator():
+  print("discriminator")
   df_dim = 64
   segment_class = 8
-  image_height = 256
-  image_width = 512
+  image_height = 32
+  image_width = 32
 
   inputs = tf.keras.layers.Input(shape=(image_height,image_width,3,))
   # mask = tf.keras.layers.Input(shape=(image_height,image_width,3,))
-  mask = tf.keras.layers.Input(shape=(32, 64, segment_class), dtype=tf.dtypes.float32)
+  mask = tf.keras.layers.Input(shape=(int(image_height/8), int(image_width/8), segment_class), dtype=tf.dtypes.float32)
 
   h0 = tf.keras.layers.Conv2D(df_dim, (3, 3), strides=(2,2), padding="same")(inputs)
   h0 = tf.keras.layers.LeakyReLU() (h0)
@@ -211,6 +214,7 @@ def sce_criterion(logits, labels):
     return tf.math.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
 
 def gradloss_criterion(in_, target, weight):
+    print("gradloss_criterion")
     abs_deriv = tf.abs(tf.abs(tf_deriv(tf.convert_to_tensor(in_))) - tf.abs(tf_deriv(target)))
     abs_deriv = tf.math.reduce_mean(abs_deriv, axis=-1, keepdims=True)
     return tf.math.reduce_mean(tf.multiply(weight, abs_deriv))

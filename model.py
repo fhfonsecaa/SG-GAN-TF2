@@ -163,6 +163,7 @@ class sggan(object):
 
     @tf.function
     def generator_loss(self, DB_fake, DA_fake):
+        print("generator_loss")
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
         segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
 
@@ -196,15 +197,16 @@ class sggan(object):
         # g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         
         # self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
-        print(self.g_loss)
+        print(g_loss)
         print(g_loss_b2a)
         print(g_loss_a2b)
-        print(self.g_loss+g_loss_b2a+g_loss_a2b)
+        print(g_loss+g_loss_b2a+g_loss_a2b)
         
-        return self.g_loss+g_loss_b2a+g_loss_a2b
+        return g_loss+g_loss_b2a+g_loss_a2b
         
     @tf.function
     def discriminator_loss(self, DB_real, DA_real, DB_fake_sample, DA_fake_sample):
+        print("discriminator_loss")
         db_loss_real = self.criterionGAN(DB_real, tf.ones_like(DB_real))
         db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(DB_fake_sample))
         db_loss = (db_loss_real + db_loss_fake) / 2
@@ -230,11 +232,12 @@ class sggan(object):
         return self.d_loss
     
     def train_step (self):
-        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            sample = tf.zeros([1,32,32,3], tf.float32)
+        print("train_step")
 
-            self.fake_B = self.generator(sample)
-            input("dvv")
+        with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+            print("GradientTape")
+
+            self.fake_B = self.generator(self.real_A)
             self.fake_A_ = self.generator(self.fake_B)
             self.fake_A = self.generator(self.real_B)
             self.fake_B_ = self.generator(self.fake_A)
@@ -249,7 +252,7 @@ class sggan(object):
         
             gen_loss = self.generator_loss(db_fake,da_fake)
             disc_loss = self.discriminator_loss(db_real, da_real, db_fake_sample, da_fake_sample)
-        print("HOLAAAAAAAAAAAAA")
+        # print("HOLAAAAAAAAAAAAA")
 
         generator_grads = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
         discriminator_grads = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
