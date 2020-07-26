@@ -43,15 +43,10 @@ class ImagePool(object):
         else:
             return image
 
-def load_test_data(image_path, image_width=512, image_height=256):
-    # img = imread(image_path)
+def load_test_data(image_path, image_width=32, image_height=32):
     img = imread(image_path)
-    img = resize(img, (image_height, image_width))
-    
-    img = img*2 - 1
-    # print(img)
-    # imgplot = plt.imshow(img)
-    # plt.show()
+    img = resize(img, [image_height, image_width, 3])
+    img = img/127.5 - 1
     return img
 
 def one_hot(image_in, num_classes=8):
@@ -128,7 +123,7 @@ def merge_images(images, size):
 
 def merge(images, size):
     h, w = images.shape[1], images.shape[2]
-    images = resize(images, (h, w, ))
+    # images = resize(images, (h, w, ))
     img = np.zeros((h * size[0], w * size[1], 3))
     for idx, image in enumerate(images):
         i = idx % size[1]
@@ -139,6 +134,8 @@ def merge(images, size):
     # return img_as_ubyte(img)
 
 def imsave(images, size, path):
+    print("-------------------------------------------------------------------------------------------------------")
+    print(path)
     return io.imsave(path, merge(images, size))
 
 def center_crop(x, crop_h, crop_w,

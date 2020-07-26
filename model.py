@@ -198,10 +198,11 @@ class sggan(object):
         # g_loss_sum = tf.summary.scalar("g_loss", self.g_loss)
         
         # self.g_sum = tf.summary.merge([g_loss_a2b_sum, g_loss_b2a_sum, g_loss_sum])
-        print(g_loss)
-        print(g_loss_b2a)
-        print(g_loss_a2b)
-        print(g_loss+g_loss_b2a+g_loss_a2b)
+
+        # print(g_loss)
+        # print(g_loss_b2a)
+        # print(g_loss_a2b)
+        # print(g_loss+g_loss_b2a+g_loss_a2b)
         
         return g_loss+g_loss_b2a+g_loss_a2b
         
@@ -364,7 +365,7 @@ class sggan(object):
                     epoch, idx, batch_idxs, time.time() - start_time)))
 
                 if np.mod(counter, args.print_freq) == 1:
-                    self.sample_model(args.sample_dir, epoch, idx)
+                    self.sample_model(args.sample_dir, epoch, idx, args)
 
                 if np.mod(counter, args.save_freq) == 2:
                     self.save(args.checkpoint_dir)
@@ -386,21 +387,21 @@ class sggan(object):
         self.discriminator.save(checkpoint_disc_dir)
 
     # TODO
-    # def load(self, checkpoint_dir):
-    #     print(" [*] Reading checkpoint...")
+    def load(self, checkpoint_dir):
+        print(" [*] Reading checkpoint...")
 
-    #     model_dir = "%s" % self.dataset_dir
-    #     checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+        model_dir = "%s" % self.dataset_dir
+        checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
 
-    #     ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
-    #     if ckpt and ckpt.model_checkpoint_path:
-    #         ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
-    #         self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-    #         return True
-    #     else:
-    #         return False
+        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+            self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+            return True
+        else:
+            return False
 
-    def sample_model(self, sample_dir, epoch, idx):
+    def sample_model(self, sample_dir, epoch, idx, args):
         dataA = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
         dataB = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testB'))
         np.random.shuffle(dataA)
@@ -408,9 +409,9 @@ class sggan(object):
         batch_files = list(zip(dataA[:self.batch_size], dataB[:self.batch_size]))
         batch_images = []
         batch_segs = []
+        
         for batch_file in batch_files:
-            # MIGRATED TO TF2 #
-            tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, self.image_width, self.image_height, is_testing=True, num_seg_masks=self.segment_class)
+            tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=self.segment_class, is_testing=True)
             batch_images.append(tmp_image)
             batch_segs.append(tmp_seg)
             
@@ -419,49 +420,44 @@ class sggan(object):
             # batch_img_B.append(tmp_imgB)
             # batch_seg_A.append(tmp_segA)
             # batch_seg_B.append(tmp_segB)
-            batch_seg_mask_A.append(tmp_seg_mask_A)
-            batch_seg_mask_B.append(tmp_seg_mask_B)
+            # batch_seg_mask_A.append(tmp_seg_mask_A)
+            # batch_seg_mask_B.append(tmp_seg_mask_B)
         
         # MIGRATED TO TF2 #
         batch_images = np.array(batch_images).astype(np.float32)
         batch_segs = np.array(batch_segs).astype(np.float32)
-            
+
+        batch_img_A = batch_images[:, :, :, :self.input_c_dim]
+        batch_img_B = batch_images[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+        batch_seg_A = batch_segs[:, :, :, :self.input_c_dim]
+        batch_seg_B = batch_segs[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+     
         # batch_img_A = np.array(batch_img_A).astype(np.float32)
         # batch_img_B = np.array(batch_img_B).astype(np.float32)
         # batch_seg_A = np.array(batch_seg_A).astype(np.float32)
         # batch_seg_B = np.array(batch_seg_B).astype(np.float32)
-        batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
-        batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
+        # batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
+        # batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
         
-        # MIGRATED TO TF2 #
-        # fake_A, fake_B = self.sess.run(
-        #     [self.fake_A, self.fake_B],
-        #     feed_dict={self.real_data: batch_images, self.seg_data: batch_segs}
-        # )
         
-        fake_A, fake_B = self.generate_test_images(batch_img_A, batch_img_B, batch_seg_A, batch_seg_B)
+        fake_A, fake_B = self.generate_test_images(batch_img_A, batch_img_B)
         save_images(fake_A, [self.batch_size, 1],
                     './{}/A_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][1].split("/")[-1].split(".")[0]))
         save_images(fake_B, [self.batch_size, 1],
                     './{}/B_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][0].split("/")[-1].split(".")[0]))
 
     @tf.function
-    def generate_test_images(self, sample_imgA, sample_imgB, seg_A, seg_B):
-        segA = tf.pad(seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        segB = tf.pad(seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(segA, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
-        conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
-        # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
-        self.weighted_seg_A = tf.abs(tf.sign(tf.reduce_sum(conved_seg_A, axis=-1, keep_dims=True)))
-        self.weighted_seg_B = tf.abs(tf.sign(tf.reduce_sum(conved_seg_B, axis=-1, keep_dims=True)))
-        
+    def generate_test_images(self, sample_imgA, sample_imgB):
         test_A = sample_imgA
         test_B = sample_imgB
         
         # direction == 'AtoB'
-        testB = self.generator(test_A, self.options, True, name="generatorA2B")
+        testB = self.generator(test_A)
         # direction == 'BtoA'
-        testA = self.generator(test_B, self.options, True, name="generatorB2A")
+        testA = self.generator(test_B)
+
+        # testB = self.generator(test_A, self.options, True, name="generatorA2B")
+        # testA = self.generator(test_B, self.options, True, name="generatorB2A")
         
         return testB, testA
         
@@ -495,14 +491,17 @@ class sggan(object):
         
         for sample_file in sample_files:
             print('Processing image: ' + sample_file)
-            # sample_image = [load_test_data(sample_file, args.img_width, args.img_height)]
-            # sample_image = np.array(sample_image).astype(np.float32)
-            
-            sample_imgA, sample_imgB, sample_segA, sample_segB, _ , _ = load_train_data(sample_file, args.img_width, args.img_height, is_testing=True)
-            sample_imgA = np.array(batch_img_A).astype(np.float32)
-            sample_imgB = np.array(batch_img_B).astype(np.float32)
-            sample_segA = np.array(batch_seg_A).astype(np.float32)
-            sample_segB = np.array(batch_seg_B).astype(np.float32)
+            sample_image = [load_test_data(sample_file, args.img_width, args.img_height)]
+            sample_image = np.array(sample_image).astype(np.float32)            
+
+            sample_imgA = sample_image[:, :, :, :self.input_c_dim]
+            sample_imgB = sample_image[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
+
+            # sample_imgA, sample_imgB, sample_segA, sample_segB, _ , _ = load_train_data(sample_file, args.img_width, args.img_height, is_testing=True)
+            # sample_imgA = np.array(batch_img_A).astype(np.float32)
+            # sample_imgB = np.array(batch_img_B).astype(np.float32)
+            # sample_segA = np.array(batch_seg_A).astype(np.float32)
+            # sample_segB = np.array(batch_seg_B).astype(np.float32)
             
             # MIGRATED TO TF2 #
             # fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})

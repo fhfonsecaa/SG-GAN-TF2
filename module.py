@@ -214,7 +214,7 @@ def sce_criterion(logits, labels):
     return tf.math.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
 
 def gradloss_criterion(in_, target, weight):
-    print("gradloss_criterion")
+    # print("gradloss_criterion")
     abs_deriv = tf.abs(tf.abs(tf_deriv(tf.convert_to_tensor(in_))) - tf.abs(tf_deriv(target)))
     abs_deriv = tf.math.reduce_mean(abs_deriv, axis=-1, keepdims=True)
     return tf.math.reduce_mean(tf.multiply(weight, abs_deriv))
