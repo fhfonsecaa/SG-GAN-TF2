@@ -103,7 +103,6 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
     # img_AB shape: (image_height, image_width, input_c_dim + output_c_dim)
     return img_AB, seg_AB, seg_mask_A, seg_mask_B #img_A, img_B, seg_A, seg_B, seg_mask_A, seg_mask_B 
 
-# -----------------------------
 
 #def get_image(image_path, image_size, is_crop=True, resize_w=64, is_grayscale = False):
 #    return transform(imread(image_path, is_grayscale), image_size, is_crop, resize_w)
@@ -134,8 +133,6 @@ def merge(images, size):
     # return img_as_ubyte(img)
 
 def imsave(images, size, path):
-    print("-------------------------------------------------------------------------------------------------------")
-    print(path)
     return io.imsave(path, merge(images, size))
 
 def center_crop(x, crop_h, crop_w,
