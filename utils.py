@@ -133,7 +133,7 @@ def merge(images, size):
     # return img_as_ubyte(img)
 
 def imsave(images, size, path):
-    return io.imsave(path, merge(images, size))
+    return io.imsave(path, merge(images+1, size))
 
 def center_crop(x, crop_h, crop_w,
                 resize_h=64, resize_w=64):

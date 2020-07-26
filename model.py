@@ -208,7 +208,8 @@ class sggan(object):
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
                 if np.mod(counter, args.print_freq) == 1:
-                    self.sample_model(args.sample_dir, epoch, idx, args)
+                    self.test(args)
+                    # self.sample_model(args.sample_dir, epoch, idx, args)
 
                 if np.mod(counter, args.save_freq) == 2:
                     self.save(args.checkpoint_dir)
@@ -289,6 +290,7 @@ class sggan(object):
         return testB, testA
         
     def test(self, args):
+        print("Running Test")
         """Test SG-GAN"""
         if args.which_direction == 'AtoB':
             sample_files = glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
