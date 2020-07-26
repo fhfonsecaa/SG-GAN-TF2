@@ -494,9 +494,6 @@ class sggan(object):
             sample_image = [load_test_data(sample_file, args.img_width, args.img_height)]
             sample_image = np.array(sample_image).astype(np.float32)            
 
-            sample_imgA = sample_image[:, :, :, :self.input_c_dim]
-            sample_imgB = sample_image[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
-
             # sample_imgA, sample_imgB, sample_segA, sample_segB, _ , _ = load_train_data(sample_file, args.img_width, args.img_height, is_testing=True)
             # sample_imgA = np.array(batch_img_A).astype(np.float32)
             # sample_imgB = np.array(batch_img_B).astype(np.float32)
@@ -505,7 +502,9 @@ class sggan(object):
             
             # MIGRATED TO TF2 #
             # fake_img = self.sess.run(out_var, feed_dict={in_var: sample_image})
-            fake_A, fake_B = self.generate_test_images(sample_imgA, sample_imgB)
+            fake_A = self.generator(sample_image)
+            fake_B = self.generator(sample_image)
+
             if args.which_direction == 'AtoB':
                 fake_img = fake_A
             else:
