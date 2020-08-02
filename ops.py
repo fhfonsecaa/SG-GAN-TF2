@@ -1,9 +1,11 @@
-import math
-import numpy as np
 import tensorflow as tf
-from tensorflow.python.framework import ops
 
-from utils import *
+# (unused) import math
+# (unused) import numpy as np
+# (unused) from tensorflow.python.framework import ops
+
+# (unused) from utils import *
+
 
 def batch_norm(x, name="batch_norm"):
     return tf.contrib.layers.batch_norm(x, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope=name)

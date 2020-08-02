@@ -1,8 +1,9 @@
-from glob import glob
 import argparse
-from utils import *
+from utils import ImagePool, load_test_data, save_images
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+
+# (unused) import matplotlib.image as mpimg
+# (unused) from glob import glob
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--dataset_dir', dest='dataset_dir', default='gta', help='path of the dataset')
