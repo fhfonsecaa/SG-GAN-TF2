@@ -1,11 +1,14 @@
 from __future__ import division
 
-import tensorflow as tf
-from tensorflow.keras import layers
-import tensorflow_addons as tfa
+import numpy as np
 
-from ops import *
-from utils import *
+import tensorflow as tf
+import tensorflow_addons as tfa
+# (unused) from tensorflow.keras import layers
+
+# (unused) from ops import *
+# (unused) from utils import *
+
 
 def generator_unet():
   print("generator_unet")
@@ -15,8 +18,9 @@ def generator_unet():
 
   dropout_rate = 0.5 if is_training else 1.0
   
-  inputs = tf.keras.layers.Input(shape=(32,32,3,))
-
+  # inputs = tf.keras.layers.Input(shape=(32,32,3,))
+  inputs = tf.keras.layers.Input(shape=(64,64,3,))
+  
   e1 = tf.keras.layers.Conv2D(gf_dim, (3, 3), padding="same")(inputs)
   e1 = tfa.layers.InstanceNormalization() (e1)
   e1 = tf.keras.layers.LeakyReLU() (e1)
@@ -104,7 +108,8 @@ def generator_resnet():
   gf_dim = 64
   output_c_dim = 3 
   
-  inputs = tf.keras.layers.Input(shape=(32,32,3,))
+  # inputs = tf.keras.layers.Input(shape=(32,32,3,),dtype=np.uint8)
+  inputs = tf.keras.layers.Input(shape=(64,64,3,),)
   
   # Justin Johnson's model from https://github.com/jcjohnson/fast-neural-style/
   # The network with 9 blocks consists of: c7s1-32, d64, d128, R128, R128, R128,
@@ -155,12 +160,13 @@ def discriminator():
   print("discriminator")
   df_dim = 64
   segment_class = 8
-  image_height = 32
-  image_width = 32
+  image_height = 64 #32
+  image_width = 64 #32
 
   inputs = tf.keras.layers.Input(shape=(image_height,image_width,3,))
+  
   # mask = tf.keras.layers.Input(shape=(image_height,image_width,3,))
-  mask = tf.keras.layers.Input(shape=(int(image_height/8), int(image_width/8), segment_class), dtype=tf.dtypes.float32)
+  mask = tf.keras.layers.Input(shape=(int(image_height/8), int(image_width/8), segment_class))
 
   h0 = tf.keras.layers.Conv2D(df_dim, (3, 3), strides=(2,2), padding="same")(inputs)
   h0 = tf.keras.layers.LeakyReLU() (h0)
