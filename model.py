@@ -11,6 +11,25 @@ from module import generator_unet, generator_resnet, discriminator, mae_criterio
 
 from utils import load_train_data, load_test_data, ImagePool, save_images
 
+import tensorflow as tf
+import datetime, os
+
+generator_loss_metric = tf.keras.metrics.Mean(name='generator_loss_metric')
+discriminator_loss_metric = tf.keras.metrics.Mean(name='discriminator_loss_metric')
+
+logs_base_dir = "logs/"
+if tf.io.gfile.exists(logs_base_dir):
+  print('Path is there')
+else:
+  tf.io.gfile.makedirs(logs_base_dir)
+  print('Path created')
+
+logdir = os.path.join(logs_base_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+train_summary_writer = tf.summary.create_file_writer(logdir + '/train')
+
+logs_base_dir = "logs/" # Because of the space in the My Drive
+
+
 class sggan(object):
     def __init__(self, args):
         self.batch_size = args.batch_size
@@ -139,6 +158,10 @@ class sggan(object):
             self.gen_loss = self.generator_loss(da_fake, args)
             self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
             # print(self.gen_loss)
+                
+            generator_loss_metric(self.gen_loss)
+            discriminator_loss_metric(self.disc_loss)
+
 
         generator_grads = gen_tape.gradient(self.gen_loss, self.generator.trainable_variables)
         discriminator_grads = disc_tape.gradient(self.disc_loss, self.discriminator.trainable_variables)
@@ -203,11 +226,22 @@ class sggan(object):
                 print(("Epoch: [%2d] [%4d/%4d] time: %4.4f Gen_Loss: %f Disc_Loss: %f " % (
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
+                with train_summary_writer.as_default():
+#                    tf.summary.image('Subject test in epoch {}'.format(epoch), ct_estimated, step=epoch)
+#                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
+                        # tf.summary.image('Subject {} Slice {} ground truth in epoch {}'.format(subject_index, brain_slice, epoch), ct_ground_truth, step=epoch)
+                    tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
+                    tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)
+                
                 # if np.mod(counter, args.print_freq) == 1:
                 #     self.test(args) # self.sample_model(args.sample_dir, epoch, idx, args)
 
                 # if np.mod(counter, args.save_freq) == 2:
+                    
+        generator_loss_metric.reset_states()
+        discriminator_loss_metric.reset_states()
         self.save(args.checkpoint_dir, epoch)
+        
 
     def save(self, checkpoint_dir, ep):
         """sggan_gene.model"""
