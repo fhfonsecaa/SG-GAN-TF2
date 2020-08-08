@@ -159,7 +159,7 @@ def generator_resnet():
 def discriminator():
   print("discriminator")
   df_dim = 64
-  segment_class = 8
+  segment_class = 34
   image_height = 64 #32
   image_width = 64 #32
 

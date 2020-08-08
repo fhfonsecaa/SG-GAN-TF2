@@ -54,11 +54,8 @@ def one_hot(image_in, num_classes=8):
     hot = np.zeros((image_in.shape[0], image_in.shape[1], num_classes))
     layer_idx = np.arange(image_in.shape[0]).reshape(image_in.shape[0], 1)
     component_idx = np.tile(np.arange(image_in.shape[1]), (image_in.shape[0], 1))
-    print(layer_idx)
-    print(component_idx)
-    print(type(image_in))
-    print(np.amax(image_in))
-    input("holis")
+    # print(np.amax(image_in))
+    # input("holis")
     hot[layer_idx, component_idx, image_in] = 1
     return hot.astype(np.int)
 
