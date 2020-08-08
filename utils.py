@@ -54,17 +54,18 @@ def one_hot(image_in, num_classes=8):
     hot = np.zeros((image_in.shape[0], image_in.shape[1], num_classes))
     layer_idx = np.arange(image_in.shape[0]).reshape(image_in.shape[0], 1)
     component_idx = np.tile(np.arange(image_in.shape[1]), (image_in.shape[0], 1))
+    print(layer_idx)
+    print(component_idx)
+    print(type(image_in))
+    print(np.amax(image_in))
+    input("holis")
     hot[layer_idx, component_idx, image_in] = 1
     return hot.astype(np.int)
 
 def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False):
-    print(image_path)
-    print(image_path[0])
-    print(image_path[0].replace("trainA","trainA_seg"))
-    input("holis")
     img_A = imread(image_path[0])
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))
-    seg_class_A = io.imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
+    seg_class_A = imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
     
     # preprocess seg masks
     if not is_testing:

@@ -32,7 +32,7 @@ parser.add_argument('--Lg_lambda', dest='Lg_lambda', type=float, default=5.0, he
 parser.add_argument('--use_resnet', dest='use_resnet', type=bool, default=False, help='generation network using residule block')
 parser.add_argument('--use_lsgan', dest='use_lsgan', type=bool, default=True, help='gan loss defined in lsgan')
 parser.add_argument('--max_size', dest='max_size', type=int, default=50, help='max size of image pool, 0 means do not use image pool')
-parser.add_argument('--segment_class', dest='segment_class', type=int, default=8, help='number of segmentation classes')
+parser.add_argument('--segment_class', dest='segment_class', type=int, default=27, help='number of segmentation classes')
 args = parser.parse_args()
 
 
