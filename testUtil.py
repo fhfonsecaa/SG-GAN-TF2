@@ -19,7 +19,6 @@ parser.add_argument('--input_nc', dest='input_nc', type=int, default=3, help='# 
 parser.add_argument('--output_nc', dest='output_nc', type=int, default=3, help='# of output image channels')
 parser.add_argument('--lr', dest='lr', type=float, default=0.0002, help='initial learning rate for adam')
 parser.add_argument('--beta1', dest='beta1', type=float, default=0.5, help='momentum term of adam')
-parser.add_argument('--which_direction', dest='which_direction', default='AtoB', help='AtoB or BtoA')
 parser.add_argument('--phase', dest='phase', default='train', help='train, test')
 parser.add_argument('--save_freq', dest='save_freq', type=int, default=1000, help='save a model every save_freq iterations')
 parser.add_argument('--print_freq', dest='print_freq', type=int, default=100, help='print the debug information every print_freq iterations')
@@ -39,24 +38,6 @@ pool = ImagePool(10)
 
 sample_file = "test/real_00007.png"
 sample_image = load_test_data(sample_file, args.img_width, args.img_height)
-
-# for epoch in range(args.epoch):
-#     dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainA'))
-#     dataB = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainB'))
-#     np.random.shuffle(dataA)
-#     np.random.shuffle(dataB)
-#     batch_idxs = min(min(len(dataA), len(dataB)), args.train_size) // args.batch_size
-#     lr = args.lr if epoch < args.epoch_step else args.lr*(args.epoch-epoch)/(args.epoch-args.epoch_step)
-
-#     for idx in range(0, batch_idxs):
-#         batch_files = list(zip(dataA[idx * args.batch_size:(idx + 1) * args.batch_size],
-#                                 dataB[idx * args.batch_size:(idx + 1) * args.batch_size]))
-#         batch_images = []
-#         batch_segs = []
-#         batch_seg_mask_A = []
-#         batch_seg_mask_B = []
-#         for batch_file in batch_files:
-#             tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=args.segment_class)
 
 print(sample_image.shape)
 imgplot = plt.imshow(sample_image)

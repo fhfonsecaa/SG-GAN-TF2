@@ -73,11 +73,6 @@ def cityscape():
 def A_maskmap():
     return cityscape()
 
-
-def B_maskmap():
-    return cityscape()
-
-
 def preprocess_master(src):
     dst = src.replace("_seg", "_seg_class")
     
@@ -107,4 +102,3 @@ def preprocess(image_seg):
 if __name__ == "__main__":
     maskmap = A_maskmap()
     preprocess_master("datasets/gta/trainA_seg")
-    preprocess_master("datasets/gta/trainB_seg")

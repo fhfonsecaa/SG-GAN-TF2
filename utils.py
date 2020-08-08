@@ -59,19 +59,14 @@ def one_hot(image_in, num_classes=8):
 
 def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False):
     img_A = imread(image_path[0])
-    img_B = imread(image_path[1])
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))
     seg_class_A = io.imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
-    seg_B = imread(image_path[1].replace("trainB","trainB_seg"))
-    seg_class_B = io.imread(image_path[1].replace("trainB","trainB_seg_class")) if not is_testing else None
     
     # preprocess seg masks
     if not is_testing:
         seg_mask_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
-        seg_mask_B = one_hot(seg_class_B.astype(np.int), num_seg_masks)
     else:
         seg_mask_A = None
-        seg_mask_B = None
 
     if not is_testing:
         img_A = resize(img_A, (image_height, image_width))
@@ -80,36 +75,19 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
                                                                    image_width/8.0/seg_mask_A.shape[1],1),
                                                       mode="nearest")
         
-        img_B = resize(img_B, (image_height, image_width))
-        seg_B = resize(seg_B, (image_height, image_width))
-        seg_mask_B = scipy.ndimage.interpolation.zoom(seg_mask_B, (image_height/8.0/seg_mask_B.shape[0],
-                                                                   image_width/8.0/seg_mask_B.shape[1],1),
-                                                      mode="nearest")
-
         if np.random.random() > 0.5:
             img_A = np.fliplr(img_A)
-            img_B = np.fliplr(img_B)
             seg_A = np.fliplr(seg_A)
-            seg_B = np.fliplr(seg_B)
             seg_mask_A = np.fliplr(seg_mask_A)
-            seg_mask_B = np.fliplr(seg_mask_B)
     else:
         img_A = resize(img_A, (image_height, image_width))
-        img_B = resize(img_B, (image_height, image_width))
         seg_A = resize(seg_A, (image_height, image_width))
-        seg_B = resize(seg_B, (image_height, image_width))
  
     img_A = img_A/127.5 - 1.
-    img_B = img_B/127.5 - 1.
     seg_A = seg_A/127.5 - 1.
-    seg_B = seg_B/127.5 - 1.
 
-    img_AB = np.concatenate((img_A, img_B), axis=2)
-    seg_AB = np.concatenate((seg_A, seg_B), axis=2)
-    # img_AB shape: (image_height, image_width, input_c_dim + output_c_dim)
     
-    return img_AB, seg_AB, seg_mask_A, seg_mask_B #img_A, img_B, seg_A, seg_B, seg_mask_A, seg_mask_B 
-
+    return img_A, seg_A, seg_mask_A 
 
 #def get_image(image_path, image_size, is_crop=True, resize_w=64, is_grayscale = False):
 #    return transform(imread(image_path, is_grayscale), image_size, is_crop, resize_w)

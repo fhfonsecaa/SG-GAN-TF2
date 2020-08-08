@@ -61,26 +61,19 @@ class sggan(object):
     def _build_model(self, args):
         # Replaced placeholder with keras.layers.Input #
         self.real_data = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(args.image_height, args.image_width,
-                                                                                args.input_nc + args.output_nc), name="real_A_and_B_images")
+                                                                                args.input_nc + args.output_nc), name="real_A_images")
         self.seg_data = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(args.image_height, args.image_width,
-                                                                            args.input_nc + args.output_nc), name="seg_A_and_B_images")
+                                                                            args.input_nc + args.output_nc), name="seg_A_images")
 
         self.mask_A = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(int(args.image_height/8), int(args.image_width/8), args.segment_class), name="mask_A")
-        self.mask_B = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(int(args.image_height/8), int(args.image_width/8), args.segment_class), name="mask_B")
 
         self.real_A =  self.real_data[:, :, :, :args.input_nc]                              # self.real_data[:, :, :, :self.input_c_dim]
-        self.real_B = self.real_data[:, :, :, args.input_nc:args.input_nc + args.output_nc] # self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
         self.seg_A = self.seg_data[:, :, :, :args.input_nc]                                 # self.seg_data[:, :, :, :self.input_c_dim]
-        self.seg_B = self.seg_data[:, :, :, args.input_nc:args.input_nc + args.output_nc]   # self.seg_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
 
         #fake_A
         self.fake_A =  tf.keras.layers.Input(dtype=tf.dtypes.float32,            
                                              shape=(None, args.image_height, args.image_width, args.input_nc),
                                              name="fake_A_sample")             # tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(None, self.image_height, self.image_width, self.input_c_dim), name="fake_A_sample")
-        #fake_B
-        self.fake_B = tf.keras.layers.Input(dtype=tf.dtypes.float32,
-                                            shape=(None, args.image_height, args.image_width, args.output_nc),
-                                            name="fake_B_sample")              # tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(None, self.image_height, self.image_width, self.output_c_dim), name="fake_B_sample")
 
         # gradient kernel for seg
         # assume input_c_dim == output_c_dim
@@ -89,51 +82,45 @@ class sggan(object):
         self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), args.input_nc) )     # self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), self.input_c_dim) )
         self.kernel = tf.constant(np.stack(self.kernels, axis=-1), name="DerivKernel_seg", dtype=np.float32)
         self.weighted_seg_A = []
-        self.weighted_seg_B = []
 
-    def generator_loss(self, DB_fake, DA_fake, args):
+    def generator_loss(self, DA_fake, args):
         # print("generator_loss")
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
-        segB = tf.pad(self.seg_B, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
 
         conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
-        conved_seg_B = tf.abs(tf.nn.depthwise_conv2d(segB, self.kernel, [1, 1, 1, 1], padding="VALID", name="conved_seg_B"))
         # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
         self.weighted_seg_A = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_A, axis=-1, keepdims=True)))
-        self.weighted_seg_B = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_B, axis=-1, keepdims=True)))
         
-        g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
-            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
+        # g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
+            # + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+            # + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+            # + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
+            # + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
         
-        g_loss_b2a = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
-            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
+        # g_loss_b2a = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+            # + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
+            # + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+            # + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
+            # + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
             
         g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
-            + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
-            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
+            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A) \
+            # + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
+            # + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
+            # + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
+            # + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
         
-        return g_loss+g_loss_b2a+g_loss_a2b
+        return g_loss
         
-    def discriminator_loss(self, DB_real, DA_real, DB_fake_sample, DA_fake_sample):
+    def discriminator_loss(self, DA_real, DA_fake_sample):
         # print("discriminator_loss")
-        db_loss_real = self.criterionGAN(DB_real, tf.ones_like(DB_real))
-        db_loss_fake = self.criterionGAN(DB_fake_sample, tf.zeros_like(DB_fake_sample))
-        db_loss = (db_loss_real + db_loss_fake) / 2
         da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
         da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
         da_loss = (da_loss_real + da_loss_fake) / 2
-        d_loss = da_loss + db_loss # self.d_loss = da_loss + db_loss
+        # d_loss = da_loss + db_loss # self.d_loss = da_loss + db_loss
+        d_loss = da_loss # self.d_loss = da_loss + db_loss
         
-        return d_loss # self.d_loss
+        return d_loss
     
     # @tf.function
     def train_step (self, args):
@@ -142,21 +129,15 @@ class sggan(object):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             # print("GradientTape")
 
-            self.fake_B = self.generator(self.real_A)
-            self.fake_A_ = self.generator(self.fake_B)
-            self.fake_A = self.generator(self.real_B)
-            self.fake_B_ = self.generator(self.fake_A)
+            self.fake_A = self.generator(self.real_A)
             
-            db_fake = self.discriminator([self.fake_B, self.mask_A])
-            da_fake = self.discriminator([self.fake_A, self.mask_B])
-        
-            db_real = self.discriminator([self.real_B, self.mask_B])
             da_real = self.discriminator([self.real_A, self.mask_A])
-            db_fake_sample = self.discriminator([self.fake_B, self.mask_B])
+            da_fake = self.discriminator([self.fake_A, self.mask_A])
+        
             da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
         
-            self.gen_loss = self.generator_loss(db_fake,da_fake, args)
-            self.disc_loss = self.discriminator_loss(db_real, da_real, db_fake_sample, da_fake_sample)
+            self.gen_loss = self.generator_loss(da_fake, args)
+            self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
             # print(self.gen_loss)
 
         generator_grads = gen_tape.gradient(self.gen_loss, self.generator.trainable_variables)
@@ -186,46 +167,35 @@ class sggan(object):
         for epoch in range(args.epoch):
             # print("Episode Number: ", counter)
             dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainA'))
-            dataB = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainB'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainB'))
             np.random.shuffle(dataA)
-            np.random.shuffle(dataB)
-            batch_idxs = min(min(len(dataA), len(dataB)), args.train_size) // args.batch_size # self.batch_size
+            batch_idxs = min(len(dataA), args.train_size) // args.batch_size # self.batch_size
             # lr = args.lr if epoch < args.epoch_step else args.lr*(args.epoch-epoch)/(args.epoch-args.epoch_step)
 
             for idx in range(0, batch_idxs):
-                # batch_files = list(zip(dataA[idx * self.batch_size:(idx + 1) * self.batch_size],
-                #                       dataB[idx * self.batch_size:(idx + 1) * self.batch_size]))
-                batch_files = list(zip(dataA[idx * args.batch_size:(idx + 1) * args.batch_size],
-                                       dataB[idx * args.batch_size:(idx + 1) * args.batch_size]))
+                batch_files = list(zip(dataA[idx * args.batch_size:(idx + 1) * args.batch_size]))
                 
                 batch_images = []
                 batch_segs = []
                 batch_seg_mask_A = []
-                batch_seg_mask_B = []
 
                 for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A, tmp_seg_mask_B = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class) # num_seg_masks=self.segment_class)
+                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class) # num_seg_masks=self.segment_class)
                     batch_images.append(tmp_image)
                     batch_segs.append(tmp_seg)
 
                     batch_seg_mask_A.append(tmp_seg_mask_A)
-                    batch_seg_mask_B.append(tmp_seg_mask_B)
                     
                 batch_images = np.array(batch_images).astype(np.float32)
                 batch_segs = np.array(batch_segs).astype(np.float32)
                 batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
-                batch_seg_mask_B = np.array(batch_seg_mask_B).astype(np.float32)
                 
                 self.real_data = batch_images
                 self.seg_data = batch_segs
 
                 self.real_A = self.real_data[:, :, :, :args.input_nc]                               # self.real_A = self.real_data[:, :, :, :self.input_c_dim]
-                self.real_B = self.real_data[:, :, :, args.input_nc:args.input_nc + args.output_nc] # self.real_B = self.real_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
                 self.seg_A = self.seg_data[:, :, :, :args.input_nc]                                 # self.seg_A = self.seg_data[:, :, :, :self.input_c_dim]
-                self.seg_B = self.seg_data[:, :, :, args.input_nc:args.input_nc + args.output_nc]   # self.seg_B = self.seg_data[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
 
                 self.mask_A = batch_seg_mask_A
-                self.mask_B = batch_seg_mask_B
                 
                 self.train_step(args)
 
@@ -330,15 +300,13 @@ class sggan(object):
 
     def sample_model(self, sample_dir, epoch, idx, args):
         dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))     # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
-        dataB = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testB'))     # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testB'))
         np.random.shuffle(dataA)
-        np.random.shuffle(dataB)
-        batch_files = list(zip(dataA[:args.batch_size], dataB[:args.batch_size])) # list(zip(dataA[:self.batch_size], dataB[:self.batch_size]))
+        batch_files = list(zip(dataA[:args.batch_size]))
         batch_images = []
         batch_segs = []
         
         for batch_file in batch_files:
-            tmp_image, tmp_seg, _, _ = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=args.segment_class, is_testing=True) # num_seg_masks=self.segment_class, is_testing=True)
+            tmp_image, tmp_seg, _  = load_train_data(batch_file, args.img_width, args.img_height, num_seg_masks=args.segment_class, is_testing=True) # num_seg_masks=self.segment_class, is_testing=True)
             batch_images.append(tmp_image)
             batch_segs.append(tmp_seg)
             
@@ -346,40 +314,24 @@ class sggan(object):
         batch_segs = np.array(batch_segs).astype(np.float32)
 
         batch_img_A = batch_images[:, :, :, :args.input_nc]                                # batch_images[:, :, :, :self.input_c_dim]
-        batch_img_B = batch_images[:, :, :, args.input_nc:args.input_nc + args.output_nc]  # batch_images[:, :, :, self.input_c_dim:self.input_c_dim + self.output_c_dim]
         
-        fake_A, fake_B = self.generate_test_images(batch_img_A, batch_img_B)
+        fake_A = self.generate_test_images(batch_img_A)
         save_images(fake_A,  [args.batch_size, 1], # [self.batch_size, 1],
                     './{}/A_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][1].split("/")[-1].split(".")[0]))
-        save_images(fake_B, [args.batch_size, 1],  # [self.batch_size, 1],
-                    './{}/B_{:02d}_{:04d}_{}.jpg'.format(sample_dir, epoch, idx, batch_files[0][0].split("/")[-1].split(".")[0]))
 
     # @tf.function
-    def generate_test_images(self, sample_imgA, sample_imgB):
+    def generate_test_images(self, sample_imgA):
         test_A = sample_imgA
-        test_B = sample_imgB
-        
-        # direction == 'AtoB'
-        testB = self.generator(test_A)
-        # direction == 'BtoA'
-        testA = self.generator(test_B)
+        testA = self.generator(test_A)
 
-        # testB = self.generator(test_A, self.options, True, name="generatorA2B")
-        # testA = self.generator(test_B, self.options, True, name="generatorB2A")
-        
-        return testB, testA
+        return testA
         
     def test(self, args):
         """Test SG-GAN"""
         
         print(" [*] Running Test ...")
         
-        if args.which_direction == 'AtoB':
-            sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
-        elif args.which_direction == 'BtoA':
-            sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testB'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testB'))
-        else:
-            raise Exception('--which_direction must be AtoB or BtoA')
+        sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
 
         if self.load(args.checkpoint_dir):
             print(" [*] Load SUCCESS")
@@ -409,12 +361,7 @@ class sggan(object):
             print("Type of sample_image: ", rescaled_sample.dtype)
             print("(?) Why gives warning if image is uint8")
             fake_A = self.generator(rescaled_sample)
-            fake_B = self.generator(rescaled_sample)
-
-            if args.which_direction == 'AtoB':
-                fake_img = fake_A
-            else:
-                fake_img = fake_B
+            fake_img = fake_A
             
             image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
