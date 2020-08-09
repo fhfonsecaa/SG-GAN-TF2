@@ -239,7 +239,7 @@ class sggan(object):
             
             fake_A = self.generator(rescaled_sample)
             fake_img = fake_A
-            # print(np.amin(fake_img), np.amax(fake_img))
+            sample_image = (sample_image*2)-1
 
             image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))

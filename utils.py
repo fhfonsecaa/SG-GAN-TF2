@@ -48,7 +48,7 @@ class ImagePool(object):
 def load_test_data(image_path, image_width=32, image_height=32):
     img = imread(image_path)
     img = resize(img, [image_height, image_width, 3])
-    img = img/127.5 - 1
+    # img = img/2 - 1
     return img
 
 def one_hot(image_in, num_classes=8):
@@ -127,10 +127,8 @@ def merge(images, size):
         j = idx // size[1]
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
-    print(np.amin(img), np.amax(img))
+    # print(np.amin(img), np.amax(img))
     return img
-    # return img_as_ubyte(img)
-
 
 def imsave(images, size, path):    
     return io.imsave(path, merge(images, size))
