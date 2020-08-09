@@ -231,19 +231,13 @@ class sggan(object):
         
         sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
 
-        # write html for visual comparison
-        index_path = os.path.join(args.test_dir, '{0}_index.html'.format(args.which_direction))
-        index = open(index_path, "w")
-        # index.write("<html><body><table><tr>")
-        # index.write("<th>name</th><th>input</th><th>output</th></tr>")
-        
         for sample_file in sample_files:
             # print('Processing image: ' + sample_file)
             sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
 
             rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]
             
-            rescaled_sample = np.array(rescaled_sample).astype(np.uint8)
+            rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
             
             # print("Type of sample_image: ", rescaled_sample.dtype)
@@ -347,12 +341,6 @@ class sggan(object):
             print(" [*] Load SUCCESS")
         else:
             print(" [!] Load failed...")
-
-        # write html for visual comparison
-        index_path = os.path.join(args.test_dir, '{0}_index.html'.format(args.which_direction))
-        index = open(index_path, "w")
-        index.write("<html><body><table><tr>")
-        index.write("<th>name</th><th>input</th><th>output</th></tr>")
         
         for sample_file in sample_files:
             print('Processing image: ' + sample_file)
@@ -364,12 +352,10 @@ class sggan(object):
             # (OK) rescaled_sample = [(255 * sample).astype(np.uint8) for sample in sample_image]
             rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]
             
-            rescaled_sample = np.array(rescaled_sample).astype(np.uint8)
+            rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
             # [check print] # print("converted test image:\n", sample_image)
-            
-            print("Type of sample_image: ", rescaled_sample.dtype)
-            print("(?) Why gives warning if image is uint8")
+
             fake_A = self.generator(rescaled_sample)
             fake_img = fake_A
             
@@ -377,10 +363,4 @@ class sggan(object):
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
             save_images(sample_image, [1, 1], real_image_copy)
             save_images(fake_img, [1, 1], image_path)
-            index.write("<td>%s</td>" % os.path.basename(image_path))
-            index.write("<td><img src='%s'></td>" % (real_image_copy if os.path.isabs(real_image_copy) else (
-                '..' + os.path.sep + real_image_copy)))
-            index.write("<td><img src='%s'></td>" % (image_path if os.path.isabs(image_path) else (
-                '..' + os.path.sep + image_path)))
-            index.write("</tr>")
-        index.close()
+
