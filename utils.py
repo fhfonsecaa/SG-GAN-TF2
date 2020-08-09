@@ -98,10 +98,10 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
 
 def save_images(images, size, image_path):
     # return imsave(inverse_transform(images), size, image_path)
-    return imsave(images, size, image_path)
+    return imsave(inverse_transform(images), size, image_path)
 
 def get_img(image, size):
-    img = merge(image, size)
+    img = merge(inverse_transform(image), size)
     img = tf.reshape(img, [1, img.shape[0], img.shape[1], img.shape[2]])
     # print(img.shape)
     return img
@@ -127,6 +127,7 @@ def merge(images, size):
         j = idx // size[1]
         img[j*h:j*h+h, i*w:i*w+w, :] = image
 
+    print(np.amin(img), np.amax(img))
     return img
     # return img_as_ubyte(img)
 
@@ -156,4 +157,4 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
     return np.array(cropped_image)*2 - 1.
 
 def inverse_transform(images):
-    return (images)/2.
+    return (images+1.)/2.

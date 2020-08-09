@@ -87,7 +87,7 @@ def generator_unet():
   d7 = tf.keras.layers.Activation('relu')(d7)
 
   d8 = tf.keras.layers.Conv2DTranspose(output_c_dim, (3, 3), padding="same") (d7)
-
+  d8 = tf.keras.layers.Activation('tanh')(d8)
   G_model = tf.keras.Model(inputs = inputs, outputs = d8)
 
   return G_model
