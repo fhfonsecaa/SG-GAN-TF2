@@ -86,19 +86,19 @@ class sggan(object):
 
         self.mask_A = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(int(args.image_height/8), int(args.image_width/8), args.segment_class), name="mask_A")
 
-        self.real_A =  self.real_data[:, :, :, :args.input_nc]                              # self.real_data[:, :, :, :self.input_c_dim]
-        self.seg_A = self.seg_data[:, :, :, :args.input_nc]                                 # self.seg_data[:, :, :, :self.input_c_dim]
+        self.real_A =  self.real_data[:, :, :, :args.input_nc]                              
+        self.seg_A = self.seg_data[:, :, :, :args.input_nc]                                 
 
         #fake_A
         self.fake_A =  tf.keras.layers.Input(dtype=tf.dtypes.float32,            
                                              shape=(None, args.image_height, args.image_width, args.input_nc),
-                                             name="fake_A_sample")             # tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(None, self.image_height, self.image_width, self.input_c_dim), name="fake_A_sample")
+                                             name="fake_A_sample")
 
         # gradient kernel for seg
         # assume input_c_dim == output_c_dim
         self.kernels = []
-        self.kernels.append( tf_kernel_prep_3d(np.array([[0,0,0],[-1,0,1],[0,0,0]]), args.input_nc) )     # self.kernels.append( tf_kernel_prep_3d(np.array([[0,0,0],[-1,0,1],[0,0,0]]), self.input_c_dim) )
-        self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), args.input_nc) )     # self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), self.input_c_dim) )
+        self.kernels.append( tf_kernel_prep_3d(np.array([[0,0,0],[-1,0,1],[0,0,0]]), args.input_nc) )
+        self.kernels.append( tf_kernel_prep_3d(np.array([[0,-1,0],[0,0,0],[0,1,0]]), args.input_nc) )
         self.kernel = tf.constant(np.stack(self.kernels, axis=-1), name="DerivKernel_seg", dtype=np.float32)
         self.weighted_seg_A = []
 
@@ -109,25 +109,9 @@ class sggan(object):
         conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
         # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
         self.weighted_seg_A = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_A, axis=-1, keepdims=True)))
-        
-        # g_loss_a2b = self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
-            # + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            # + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            # + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            # + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
-        
-        # g_loss_b2a = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
-            # + args.L1_lambda * abs_criterion(self.real_A, self.fake_A_) \
-            # + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            # + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            # + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
             
         g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
-            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A) \
-            # + self.criterionGAN(DB_fake, tf.ones_like(DB_fake)) \
-            # + args.L1_lambda * abs_criterion(self.real_B, self.fake_B_) \
-            # + args.Lg_lambda * gradloss_criterion(self.real_A, self.fake_B, self.weighted_seg_A) \
-            # + args.Lg_lambda * gradloss_criterion(self.real_B, self.fake_A, self.weighted_seg_B)  
+            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A) 
         
         return g_loss
         
@@ -136,8 +120,8 @@ class sggan(object):
         da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
         da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
         da_loss = (da_loss_real + da_loss_fake) / 2
-        # d_loss = da_loss + db_loss # self.d_loss = da_loss + db_loss
-        d_loss = da_loss # self.d_loss = da_loss + db_loss
+
+        d_loss = da_loss 
         
         return d_loss
     
@@ -215,8 +199,8 @@ class sggan(object):
                 self.real_data = batch_images
                 self.seg_data = batch_segs
 
-                self.real_A = self.real_data[:, :, :, :args.input_nc]                               # self.real_A = self.real_data[:, :, :, :self.input_c_dim]
-                self.seg_A = self.seg_data[:, :, :, :args.input_nc]                                 # self.seg_A = self.seg_data[:, :, :, :self.input_c_dim]
+                self.real_A = self.real_data[:, :, :, :args.input_nc]
+                self.seg_A = self.seg_data[:, :, :, :args.input_nc]
 
                 self.mask_A = batch_seg_mask_A
                 
@@ -227,41 +211,49 @@ class sggan(object):
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
             with train_summary_writer.as_default():
+                fake, sample = self.test_during_train(args)
 #                    tf.summary.image('Subject test in epoch {}'.format(epoch), ct_estimated, step=epoch)
 #                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
-                    # tf.summary.image('Subject {} Slice {} ground truth in epoch {}'.format(subject_index, brain_slice, epoch), ct_ground_truth, step=epoch)
+                tf.summary.image('Subject {} Slice {} ground truth in epoch {}'.format(fake, sample, epoch), sample, step=epoch)
+
                 tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
                 tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)
-                
-                # if np.mod(counter, args.print_freq) == 1:
-                #     self.test(args) # self.sample_model(args.sample_dir, epoch, idx, args)
-
-                # if np.mod(counter, args.save_freq) == 2:
                     
             generator_loss_metric.reset_states()
             discriminator_loss_metric.reset_states()
         self.save(args.checkpoint_dir, epoch)
         
 
+    def test_during_train(self, args):
+        """Test SG-GAN"""
+        
+        # print(" [*] Running Test ...")
+        
+        sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
+
+        # write html for visual comparison
+        index_path = os.path.join(args.test_dir, '{0}_index.html'.format(args.which_direction))
+        index = open(index_path, "w")
+        # index.write("<html><body><table><tr>")
+        # index.write("<th>name</th><th>input</th><th>output</th></tr>")
+        
+        for sample_file in sample_files:
+            # print('Processing image: ' + sample_file)
+            sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
+
+            rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]
+            
+            rescaled_sample = np.array(rescaled_sample).astype(np.uint8)
+            sample_image = np.array(sample_image).astype(np.float32)
+            
+            # print("Type of sample_image: ", rescaled_sample.dtype)
+            # print("(?) Why gives warning if image is uint8")
+
+            return self.generator(rescaled_sample), sample_image
+
     def save(self, checkpoint_dir, ep):
         """sggan_gene.model"""
-        
-        #### MODIFIED
-        # model_dir = "%s" % self.dataset_dir
-        # checkpoint_gene_dir = os.path.join(checkpoint_dir, model_dir)
-        # model_name = "sggan_disc.model"
-        # checkpoint_disc_dir = os.path.join(checkpoint_dir, model_dir)
-        
-        # if not os.path.exists(checkpoint_gene_dir):
-        #     os.makedirs(checkpoint_gene_dir)
-
-        # if not os.path.exists(checkpoint_disc_dir):
-        #     os.makedirs(checkpoint_disc_dir)
-
-        # self.generator.save(checkpoint_gene_dir)
-        # self.discriminator.save(checkpoint_disc_dir)
-        ####
-        
+      
         print(" [*] Saving checkpoint...")
         
         checkpoint_path = "%s/%s" % (checkpoint_dir,self.dataset_dir)
@@ -282,11 +274,6 @@ class sggan(object):
 
     def load(self, checkpoint_dir):
         print(" [*] Reading checkpoint...")
-        
-        #### MODIFIED
-        # model_dir = "%s" % self.dataset_dir
-        # checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
-        ####
         
         checkpoint_path = "%s/%s" % (checkpoint_dir,self.dataset_dir)
         gen_checkpoint_path = os.path.join(checkpoint_path, "gen/cp-{epoch:04d}.ckpt")  # "./checkpoint/gta/gen/cp-{epoch:04d}.ckpt"
@@ -319,18 +306,6 @@ class sggan(object):
         else:
             return False
         
-        #### MODIFIED
-        # if g_ckpt and g_ckpt.model_checkpoint_path:
-        #     g_ckpt_name = os.path.basename(g_ckpt.model_checkpoint_path)
-        #     print("fail os.path.basename()")
-        #     self.generator.load_weights(checkpoint_dir)
-        #     print("fail load_weights()")
-        #     self.discriminator.load_weights(checkpoint_dir)            
-        #     self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
-        #     return True
-        # else:
-        #     return False
-        ####
 
     def sample_model(self, sample_dir, epoch, idx, args):
         dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))     # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
@@ -359,7 +334,8 @@ class sggan(object):
         testA = self.generator(test_A)
 
         return testA
-        
+
+
     def test(self, args):
         """Test SG-GAN"""
         
