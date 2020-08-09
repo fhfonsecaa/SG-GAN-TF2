@@ -159,8 +159,8 @@ class sggan(object):
             self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
             # print(self.gen_loss)
                 
-            generator_loss_metric(self.gen_loss)
-            discriminator_loss_metric(self.disc_loss)
+        generator_loss_metric(self.gen_loss)
+        discriminator_loss_metric(self.disc_loss)
 
 
         generator_grads = gen_tape.gradient(self.gen_loss, self.generator.trainable_variables)
@@ -226,20 +226,20 @@ class sggan(object):
                 print(("Epoch: [%2d] [%4d/%4d] time: %4.4f Gen_Loss: %f Disc_Loss: %f " % (
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
-                with train_summary_writer.as_default():
+            with train_summary_writer.as_default():
 #                    tf.summary.image('Subject test in epoch {}'.format(epoch), ct_estimated, step=epoch)
 #                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
-                        # tf.summary.image('Subject {} Slice {} ground truth in epoch {}'.format(subject_index, brain_slice, epoch), ct_ground_truth, step=epoch)
-                    tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
-                    tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)
+                    # tf.summary.image('Subject {} Slice {} ground truth in epoch {}'.format(subject_index, brain_slice, epoch), ct_ground_truth, step=epoch)
+                tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
+                tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)
                 
                 # if np.mod(counter, args.print_freq) == 1:
                 #     self.test(args) # self.sample_model(args.sample_dir, epoch, idx, args)
 
                 # if np.mod(counter, args.save_freq) == 2:
                     
-        generator_loss_metric.reset_states()
-        discriminator_loss_metric.reset_states()
+            generator_loss_metric.reset_states()
+            discriminator_loss_metric.reset_states()
         self.save(args.checkpoint_dir, epoch)
         
 

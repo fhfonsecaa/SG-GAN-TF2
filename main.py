@@ -5,7 +5,7 @@ tf.random.set_seed(19)
 print("TensorFlow version: ",tf.__version__)
 
 # Load the TensorBoard notebook extension
-%load_ext tensorboard
+# %load_ext tensorboard
 
 from model import sggan
 
