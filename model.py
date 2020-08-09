@@ -214,7 +214,7 @@ class sggan(object):
                 fake, sample = self.test_during_train(args)
 #                    tf.summary.image('Subject test in epoch {}'.format(epoch), ct_estimated, step=epoch)
 #                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
-                tf.summary.image('Subject {} Slice {} ground truth in epoch {}'.format(fake, sample, epoch), sample, step=epoch)
+                tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
 
                 tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
                 tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)

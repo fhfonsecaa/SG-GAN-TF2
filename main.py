@@ -6,6 +6,7 @@ print("TensorFlow version: ",tf.__version__)
 
 # Load the TensorBoard notebook extension
 # %load_ext tensorboard
+# tensorboard --logdir logs
 
 from model import sggan
 
@@ -24,7 +25,7 @@ parser.add_argument('--output_nc', dest='output_nc', type=int, default=3, help='
 parser.add_argument('--lr', dest='lr', type=float, default=0.0002, help='initial learning rate for adam')
 parser.add_argument('--beta1', dest='beta1', type=float, default=0.5, help='momentum term of adam')
 parser.add_argument('--which_direction', dest='which_direction', default='AtoB', help='AtoB or BtoA')
-parser.add_argument('--phase', dest='phase', default='test', help='train, test')
+parser.add_argument('--phase', dest='phase', default='train', help='train, test')
 parser.add_argument('--save_freq', dest='save_freq', type=int, default=1000, help='save a model every save_freq iterations')
 parser.add_argument('--print_freq', dest='print_freq', type=int, default=5, help='print the debug information every print_freq iterations')
 parser.add_argument('--continue_train', dest='continue_train', type=bool, default=False, help='if continue training, load the latest model: 1: true, 0: false')
