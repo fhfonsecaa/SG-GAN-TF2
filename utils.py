@@ -9,6 +9,7 @@ import scipy.misc
 import scipy.ndimage
 from skimage.transform import resize
 from skimage import io, img_as_float # (unused) img_as_ubyte
+import tensorflow as tf
 # (unused) import matplotlib.pyplot as plt
 # (unused) import matplotlib.image as mpimg
 
@@ -99,6 +100,11 @@ def save_images(images, size, image_path):
     # return imsave(inverse_transform(images), size, image_path)
     return imsave(images, size, image_path)
 
+def get_img(image, size):
+    img = merge(image, size)
+    img = tf.reshape(img, [1, img.shape[0], img.shape[1], img.shape[2]])
+    # print(img.shape)
+    return img
 
 def imread(path, is_grayscale = False):
     if (is_grayscale):

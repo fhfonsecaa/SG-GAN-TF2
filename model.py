@@ -9,7 +9,7 @@ from collections import namedtuple
 from module import generator_unet, generator_resnet, discriminator, mae_criterion, \
                     sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion
 
-from utils import load_train_data, load_test_data, ImagePool, save_images
+from utils import load_train_data, load_test_data, ImagePool, save_images, get_img
 
 import tensorflow as tf
 import datetime, os
@@ -212,8 +212,8 @@ class sggan(object):
 
             with train_summary_writer.as_default():
                 fake, sample = self.test_during_train(args)
-#                    tf.summary.image('Subject test in epoch {}'.format(epoch), ct_estimated, step=epoch)
 #                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
+                tf.summary.image('Sample Image {}'.format(epoch), sample, step=epoch)
                 tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
 
                 tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
@@ -225,8 +225,7 @@ class sggan(object):
         
 
     def test_during_train(self, args):
-        """Test SG-GAN"""
-        
+        """Test SG-GAN"""        
         # print(" [*] Running Test ...")
         
         sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
@@ -234,16 +233,22 @@ class sggan(object):
         for sample_file in sample_files:
             # print('Processing image: ' + sample_file)
             sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
-
-            rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]
-            
+            rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]           
             rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
             
-            # print("Type of sample_image: ", rescaled_sample.dtype)
-            # print("(?) Why gives warning if image is uint8")
+            fake_A = self.generator(rescaled_sample)
+            fake_img = fake_A
+            
+            # image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
+            # real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
+            # save_images(sample_image, [1, 1], real_image_copy)
+            # save_images(fake_img, [1, 1], image_path)
 
-            return self.generator(rescaled_sample), sample_image
+            fake_img = get_img(fake_A, [1, 1])
+            actual_image = get_img(sample_image, [1, 1])
+            # actual_image = np.array(actual_image).astype(np.uint8)
+            return fake_img, actual_image
 
     def save(self, checkpoint_dir, ep):
         """sggan_gene.model"""
