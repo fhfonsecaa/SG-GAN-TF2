@@ -9,7 +9,7 @@ from collections import namedtuple
 from module import generator_unet, generator_resnet, discriminator, mae_criterion, \
                     sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion
 
-from utils import load_train_data, load_test_data, ImagePool, save_images, get_img
+from utils import load_train_data, load_test_data, ImagePool, save_images, get_img, DataAugmentation
 
 import tensorflow as tf
 import datetime, os
@@ -178,6 +178,8 @@ class sggan(object):
             batch_idxs = min(len(dataA), args.train_size) // args.batch_size # self.batch_size
             # lr = args.lr if epoch < args.epoch_step else args.lr*(args.epoch-epoch)/(args.epoch-args.epoch_step)
 
+            augmenter = DataAugmentation()
+            
             for idx in range(0, batch_idxs):
                 batch_files = list(zip(dataA[idx * args.batch_size:(idx + 1) * args.batch_size]))
                 
@@ -186,7 +188,7 @@ class sggan(object):
                 batch_seg_mask_A = []
 
                 for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class) # num_seg_masks=self.segment_class)
+                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_ugment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
                     batch_images.append(tmp_image)
                     batch_segs.append(tmp_seg)
 
