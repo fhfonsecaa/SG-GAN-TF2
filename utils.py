@@ -45,6 +45,56 @@ class ImagePool(object):
         else:
             return image
 
+        class DataAugmentation(object):
+    def __init__(self):
+        self.seq1 = iaa.Sequential([
+            # Small gaussian blur with random sigma between 0 and 0.5.
+            # But we only blur about 50% of all images.
+            iaa.Sometimes(
+                0.5,
+                iaa.GaussianBlur(sigma=(0, 0.5))
+            ),
+            # Strengthen or weaken the contrast in each image.
+            iaa.LinearContrast((0.75, 1.5)),
+            # Add gaussian noise.
+            # For 50% of all images, we sample the noise once per pixel.
+            # For the other 50% of all images, we sample the noise per pixel AND
+            # channel. This can change the color (not only brightness) of the
+            # pixels.
+            iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05*255), per_channel=0.5),
+            # Make some images brighter and some darker.
+            # In 20% of all cases, we sample the multiplier once per channel,
+            # which can end up changing the color of the images.
+            iaa.Multiply((0.8, 1.2), per_channel=0.2),
+            # Apply affine transformations to each image.
+            # Scale/zoom them, translate/move them, rotate them and shear them.
+            ], random_order=True) # apply augmenters in random order
+        
+        self.seq2 = iaa.Sequential([
+            # Left-Right flips
+            iaa.Fliplr(0.5),
+            # Random crops
+            iaa.Crop(percent=(0, 0.1)),
+            # Affine transformations
+            iaa.Affine(
+                scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},
+                translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+                rotate=(-25, 25),
+                shear=(-8, 8)
+                )
+            ], random_order=True) # apply augmenters in random order
+        
+    def augmentation_func(self, image, seg):
+        concat_images = np.concatenate((image, seg), axis=2)
+        concat_images_aug = self.seq1(images=concat_images)
+        img_aug, seg_aug, _ = np.split(concat_images_aug, [3,7], axis=2)
+        
+        concat_data = np.concatenate((img_aug, seg_aug), axis=2)
+        concat_data_aug = self.seq1(images=concat_data)
+        img_aug, seg_aug, _ = np.split(concat_data_aug, [3,7], axis=2)
+        
+        return img_aug, seg_aug
+    
 def load_test_data(image_path, image_width=32, image_height=32):
     img = imread(image_path)
     img = resize(img, [image_height, image_width, 3])
@@ -60,11 +110,15 @@ def one_hot(image_in, num_classes=8):
     hot[layer_idx, component_idx, image_in] = 1
     return hot.astype(np.int)
 
-def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False):
+def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False, do_augment=True, augmenter=None):
     img_A = imread(image_path[0])
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))
     seg_class_A = imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
     
+    if do_augment and (augmenter is not None):
+        # print("[*] Augmentation...")
+        img_A, seg_A = augmenter.augmentation_func(img_A, seg_A)
+        
     # preprocess seg masks
     if not is_testing:
         seg_mask_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
