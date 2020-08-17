@@ -12,6 +12,10 @@ from skimage import io, img_as_float # (unused) img_as_ubyte
 import tensorflow as tf
 # (unused) import matplotlib.pyplot as plt
 # (unused) import matplotlib.image as mpimg
+# import augmenters from imgaug
+from imgaug import augmenters as iaa
+# Import segmentation maps from imgaug
+from imgaug.augmentables.segmaps import SegmentationMapOnImage
 
 pp = pprint.PrettyPrinter()
 
