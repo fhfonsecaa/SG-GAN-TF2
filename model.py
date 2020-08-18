@@ -14,6 +14,9 @@ from utils import load_train_data, load_test_data, ImagePool, save_images, get_i
 import tensorflow as tf
 import datetime, os
 
+from metric import scores
+import pandas as pd
+
 generator_loss_metric = tf.keras.metrics.Mean(name='generator_loss_metric')
 discriminator_loss_metric = tf.keras.metrics.Mean(name='discriminator_loss_metric')
 
