@@ -227,31 +227,52 @@ class sggan(object):
         
 
     def test_during_train(self, args):
+        
+        def swap_channels(tensor):
+            return tf.transpose(tensor, [0,3,2,1])
+        
         """Test SG-GAN"""        
         # print(" [*] Running Test ...")
         
         sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
-
+        
+        preds = []; gts = [];
         for sample_file in sample_files:
             # print('Processing image: ' + sample_file)
             sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
+            
             rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]           
             rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
             
             fake_A = self.generator(rescaled_sample)
             fake_img = fake_A
+            
             sample_image = (sample_image*2)-1
 
             image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
             save_images(sample_image, [1, 1], real_image_copy)
             save_images(fake_img, [1, 1], image_path)
-
+            
+            # Compute test scores
             actual_image = get_img(sample_image, [1, 1])
             fake_img = get_img(fake_A, [1, 1])
             # actual_image = np.array(actual_image).astype(np.uint8)
-            return fake_img, actual_image
+            
+            true_img = swap_channels(actual_image)
+            pred_img = swap_channels(fake_img)
+            
+            preds += list(np.argmax(pred_img, axis=1))
+            gts += list(np.argmax(true_img, axis=1)) # list(true_img.numpy())
+            
+            # return fake_img, actual_image
+            yield fake_img, actual_image
+            
+        score = scores(gts, preds, n_class=args.segment_class)
+        score_df = pd.DataFrame(score)
+        print("\n[*] Test scores:")
+        print(score_df)
 
     def save(self, checkpoint_dir, ep):
         """sggan_gene.model"""
