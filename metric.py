@@ -2,7 +2,16 @@
 # https://github.com/wkentaro/pytorch-fcn/blob/master/torchfcn/utils.py
 
 import numpy as np
+import pydensecrf.densecrf as dcrf
+import pydensecrf.utils as utils
 
+
+MAX_ITER = 10
+POS_W = 3
+POS_XY_STD = 1
+Bi_W = 4
+Bi_XY_STD = 67
+Bi_RGB_STD = 3
 
 def _fast_hist(label_true, label_pred, n_class):
     mask = (label_true >= 0) & (label_true < n_class)
