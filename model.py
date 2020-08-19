@@ -228,11 +228,35 @@ class sggan(object):
             discriminator_loss_metric.reset_states()
         self.save(args.checkpoint_dir, epoch)
         
-
-    def test_during_train(self, args):
-        
+    def get_labels (self, test_img, pred_img, crf=True):
         def swap_channels(tensor):
             return tf.transpose(tensor, [0,3,2,1])
+        
+        def crf_wrapper(true_image, pred_image):
+            image = true_image.numpy()
+            image = (image * 255).astype(np.uint8)
+            lt = image[0,:,:,:]
+            
+            # lp = swap_channels(pred_image)
+            # lp = lp[0,:,:,:].numpy()
+            lp = (swap_channels(pred_image).numpy() * 255)
+            lp = lp[0,:,:,:]
+            
+            prob = dense_crf(lt, lp)
+            prob = np.expand_dims(prob,axis=0)
+            
+            return prob, image.transpose(0,3,2,1)
+        
+        if crf:
+            lp, lt = crf_wrapper(test_img, pred_img)
+            # lt = swap_channels(test_img).numpy()
+        else:
+            lp = swap_channels(pred_img)
+            lt = swap_channels(test_img)
+        
+        return lp, lt
+      
+    def test_during_train(self, args):
         
         """Test SG-GAN"""        
         # print(" [*] Running Test ...")
@@ -268,11 +292,11 @@ class sggan(object):
             fake_img = get_img(fake_A, [1, 1])
             # actual_image = np.array(actual_image).astype(np.uint8)
             
-            true_img = swap_channels(actual_image)
-            pred_img = swap_channels(fake_img)
+            # Get test, prediction labels
+            lp, lt = self.get_labels(actual_image, fake_img)
             
-            preds += list(np.argmax(pred_img, axis=1))
-            gts += list(np.argmax(true_img, axis=1)) # list(true_img.numpy())
+            preds += list(np.argmax(lp, axis=1))
+            gts += list(np.argmax(lt, axis=1)) # list(true_img.numpy())
             
             # return fake_img, actual_image
             # yield fake_img, actual_image
