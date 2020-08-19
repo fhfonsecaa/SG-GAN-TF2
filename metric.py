@@ -34,3 +34,25 @@ def scores(label_trues, label_preds, n_class):
         "Mean IoU": mean_iu,
         "Class IoU": cls_iu,
     }
+
+   def dense_crf(img, output_probs):
+    c = output_probs.shape[0]
+    h = output_probs.shape[1]
+    w = output_probs.shape[2]
+    # h = output_probs.shape[0]
+    # w = output_probs.shape[1]
+    # c = output_probs.shape[2]
+
+    U = utils.unary_from_softmax(output_probs)
+    U = np.ascontiguousarray(U)
+
+    img = np.ascontiguousarray(img)
+
+    d = dcrf.DenseCRF2D(w, h, c)
+    d.setUnaryEnergy(U)
+    d.addPairwiseGaussian(sxy=POS_XY_STD, compat=POS_W)
+    d.addPairwiseBilateral(sxy=Bi_XY_STD, srgb=Bi_RGB_STD, rgbim=img, compat=Bi_W)
+
+    Q = d.inference(MAX_ITER)
+    Q = np.array(Q).reshape((c, h, w))
+    return Q
