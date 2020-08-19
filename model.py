@@ -14,7 +14,8 @@ from utils import load_train_data, load_test_data, ImagePool, save_images, get_i
 import tensorflow as tf
 import datetime, os
 
-from metric import scores
+import metric
+from metric import scores, dense_crf
 import pandas as pd
 
 generator_loss_metric = tf.keras.metrics.Mean(name='generator_loss_metric')
