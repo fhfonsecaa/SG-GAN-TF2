@@ -191,7 +191,7 @@ class sggan(object):
                 batch_seg_mask_A = []
 
                 for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_ugment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
+                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
                     batch_images.append(tmp_image)
                     batch_segs.append(tmp_seg)
 
@@ -239,7 +239,12 @@ class sggan(object):
         
         sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
         
-        preds = []; gts = [];
+        preds = []
+        gts = []
+        
+        fake_img = []
+        actual_image = []
+        
         for sample_file in sample_files:
             # print('Processing image: ' + sample_file)
             sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
@@ -270,12 +275,13 @@ class sggan(object):
             gts += list(np.argmax(true_img, axis=1)) # list(true_img.numpy())
             
             # return fake_img, actual_image
-            yield fake_img, actual_image
+            # yield fake_img, actual_image
             
         score = scores(gts, preds, n_class=args.segment_class)
         score_df = pd.DataFrame(score)
         print("\n[*] Test scores:")
         print(score_df)
+        return fake_img, actual_image
 
     def save(self, checkpoint_dir, ep):
         """sggan_gene.model"""

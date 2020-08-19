@@ -49,7 +49,7 @@ class ImagePool(object):
         else:
             return image
 
-        class DataAugmentation(object):
+class DataAugmentation(object):
     def __init__(self):
         self.seq1 = iaa.Sequential([
             # Small gaussian blur with random sigma between 0 and 0.5.
