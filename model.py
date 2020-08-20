@@ -30,6 +30,7 @@ else:
 
 logdir = os.path.join(logs_base_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 train_summary_writer = tf.summary.create_file_writer(logdir + '/train')
+test_summary_writer = tf.summary.create_file_writer(logdir + '/test')
 
 logs_base_dir = "logs/" # Because of the space in the My Drive
 
@@ -314,6 +315,12 @@ class sggan(object):
             
         score = scores(gts, preds, n_class=args.segment_class)
         score_df = pd.DataFrame(score)
+        with train_summary_writer.as_default():
+            tf.summary.scalar('Overall Accuracy', score["Overall Acc"], step=epoch)
+            tf.summary.scalar('Mean Accuracy', score["Mean Acc"], step=epoch)
+            tf.summary.scalar('Frequency Weighted Accuracy', score["FreqW Acc"], step=epoch)
+            tf.summary.scalar('Mean IoU', score["Mean IoU"], step=epoch)
+
         print("\n[*] Test scores:")
         print(score_df)
         return fake_img, actual_image
