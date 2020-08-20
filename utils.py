@@ -115,6 +115,8 @@ def load_test_data(image_path, image_width=32, image_height=32):
     seg_mask_A = scipy.ndimage.interpolation.zoom(seg_mask_A, (image_height/seg_mask_A.shape[0],
                                                                image_width/seg_mask_A.shape[1],1),
                                                   mode="nearest")
+
+                                
     return img, seg_mask_A #img
 
 def one_hot(image_in, num_classes=8):
@@ -156,18 +158,26 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
         img_A = resize(img_A, (image_height, image_width))
         seg_A = resize(seg_A, (image_height, image_width))
 
-    # print('Loading Train Data')
+    print('Loading Train Data')
     # print(np.amin(img_A), np.amax(img_A))
-    # print(np.amin(seg_A), np.amax(seg_A))       
+    # print(np.amin(seg_A), np.amax(seg_A))    
+    # imgplot = plt.imshow(img_A)
+    # plt.show()   
+    # imgplot = plt.imshow(seg_A)
+    # plt.show()   
  
-    img_A = (img_A*2)-1
-    seg_A = (seg_A*2)-1
+    # img_A = (img_A*2)-1
+    # seg_A = (seg_A*2)-1
     # print(' ______ ')
     
     # print(np.amin(img_A), np.amax(img_A))
     # print(np.amin(seg_A), np.amax(seg_A))
     # input('train')
-
+    # imgplot = plt.imshow(img_A)
+    # plt.show()   
+    # imgplot = plt.imshow(seg_A)
+    # plt.show()
+    # input('train')
 
     
     return img_A, seg_A, seg_mask_A 
