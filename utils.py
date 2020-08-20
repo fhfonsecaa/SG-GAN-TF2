@@ -108,9 +108,14 @@ def load_test_data(image_path, image_width=32, image_height=32):
     # img = img/2 - 1
     # print('Loading Test Data')
     # print(np.amin(img), np.amax(img))
-    input('test')
-
-    return img
+    # input('test')
+    seg_class_A = imread(image_path.replace("testA","trainA_seg_class"))
+    seg_mask_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
+    
+    seg_mask_A = scipy.ndimage.interpolation.zoom(seg_mask_A, (image_height/seg_mask_A.shape[0],
+                                                               image_width/seg_mask_A.shape[1],1),
+                                                  mode="nearest")
+    return img, seg_mask_A #img
 
 def one_hot(image_in, num_classes=8):
     hot = np.zeros((image_in.shape[0], image_in.shape[1], num_classes))
