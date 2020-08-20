@@ -229,33 +229,34 @@ class sggan(object):
             discriminator_loss_metric.reset_states()
         self.save(args.checkpoint_dir, epoch)
         
-    def get_labels (self, test_img, pred_img, crf=True):
+    def get_labels (self, test_label, pred_img, crf=True):
         def swap_channels(tensor):
             return tf.transpose(tensor, [0,3,2,1])
         
         def crf_wrapper(true_image, pred_image):
-            image = true_image.numpy()
+            image = true_image
             image = (image * 255).astype(np.uint8)
             lt = image[0,:,:,:]
-            
-            # lp = swap_channels(pred_image)
-            # lp = lp[0,:,:,:].numpy()
-            lp = (swap_channels(pred_image).numpy() * 255)
+            print(lt.shape)
+            lp = pred_image.numpy().transpose(0,3,2,1) #swap_channels(pred_image)
             lp = lp[0,:,:,:]
+            print(lp.shape)
+            # lp = (swap_channels(pred_image).numpy() * 255)
+            # lp = lp[0,:,:,:]
             
             prob = dense_crf(lt, lp)
             prob = np.expand_dims(prob,axis=0)
             
-            return prob, image.transpose(0,3,2,1)
+            return image, prob #prob, image.transpose(0,3,2,1)
         
         if crf:
-            lp, lt = crf_wrapper(test_img, pred_img)
+            lt, lp = crf_wrapper(test_label, pred_img)
             # lt = swap_channels(test_img).numpy()
         else:
-            lp = swap_channels(pred_img)
-            lt = swap_channels(test_img)
+            lt = test_label.transpose(0,3,2,1)
+            lp = pred_img.numpy().transpose(0,3,2,1)
         
-        return lp, lt
+        return lt, lp
       
     def test_during_train(self, args):
         
@@ -272,7 +273,16 @@ class sggan(object):
         
         for sample_file in sample_files:
             # print('Processing image: ' + sample_file)
-            sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
+            
+            #### [MODIFIED] to test metric functions ####
+            #### sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
+            
+            #### [CHANGES]
+            sample_image, segment_class = load_test_data(sample_file, args.image_width, args.image_height)
+            sample_image = [sample_image]
+            segment_class = [segment_class]
+            segment_class = np.array(segment_class).astype(np.float32)
+            ####
             
             rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]           
             rescaled_sample = np.array(rescaled_sample).astype(np.float32)
