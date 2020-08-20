@@ -229,7 +229,7 @@ class sggan(object):
             discriminator_loss_metric.reset_states()
         self.save(args.checkpoint_dir, epoch)
         
-    def get_labels (self, test_label, pred_img, crf=True):
+    def get_labels (self, test_label, pred_img, crf=False):
         def swap_channels(tensor):
             return tf.transpose(tensor, [0,3,2,1])
         
@@ -304,7 +304,7 @@ class sggan(object):
             # actual_image = np.array(actual_image).astype(np.uint8)
             
             # Get test, prediction labels
-            lp, lt = self.get_labels(actual_image, fake_img)
+            lp, lt = self.get_labels(actual_image, fake_img, crf=False)
             
             preds += list(np.argmax(lp, axis=1))
             gts += list(np.argmax(lt, axis=1)) # list(true_img.numpy())
