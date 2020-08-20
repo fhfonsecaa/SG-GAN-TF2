@@ -218,7 +218,7 @@ class sggan(object):
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
             with train_summary_writer.as_default():
-                fake, sample = self.test_during_train(args)
+                fake, sample = self.test_during_train(epoch, args)
 #                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
                 tf.summary.image('Sample Image {}'.format(epoch), sample, step=epoch)
                 tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
@@ -259,7 +259,7 @@ class sggan(object):
         
         return lt, lp
       
-    def test_during_train(self, args):
+    def test_during_train(self, epoch, args):
         
         """Test SG-GAN"""        
         # print(" [*] Running Test ...")
