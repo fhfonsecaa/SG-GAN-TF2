@@ -284,6 +284,7 @@ class sggan(object):
             segment_class = np.array(segment_class).astype(np.float32)
             ####
             
+            
             rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]           
             rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
