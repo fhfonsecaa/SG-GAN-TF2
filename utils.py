@@ -10,6 +10,9 @@ import scipy.ndimage
 from skimage.transform import resize
 from skimage import io, img_as_float # (unused) img_as_ubyte
 import tensorflow as tf
+
+import matplotlib.pyplot as plt
+
 # (unused) import matplotlib.pyplot as plt
 # (unused) import matplotlib.image as mpimg
 # import augmenters from imgaug
@@ -103,6 +106,10 @@ def load_test_data(image_path, image_width=32, image_height=32):
     img = imread(image_path)
     img = resize(img, [image_height, image_width, 3])
     # img = img/2 - 1
+    # print('Loading Test Data')
+    # print(np.amin(img), np.amax(img))
+    input('test')
+
     return img
 
 def one_hot(image_in, num_classes=8):
@@ -110,11 +117,11 @@ def one_hot(image_in, num_classes=8):
     layer_idx = np.arange(image_in.shape[0]).reshape(image_in.shape[0], 1)
     component_idx = np.tile(np.arange(image_in.shape[1]), (image_in.shape[0], 1))
     # print(np.amax(image_in))
-    # input("holis")
+    # input("one hot")
     hot[layer_idx, component_idx, image_in] = 1
     return hot.astype(np.int)
 
-def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False, do_augment=True, augmenter=None):
+def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8, is_testing=False, do_augment=False, augmenter=None):
     img_A = imread(image_path[0])
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))
     seg_class_A = imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
@@ -143,9 +150,19 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
     else:
         img_A = resize(img_A, (image_height, image_width))
         seg_A = resize(seg_A, (image_height, image_width))
+
+    # print('Loading Train Data')
+    # print(np.amin(img_A), np.amax(img_A))
+    # print(np.amin(seg_A), np.amax(seg_A))       
  
-    img_A = img_A/127.5 - 1.
-    seg_A = seg_A/127.5 - 1.
+    img_A = (img_A*2)-1
+    seg_A = (seg_A*2)-1
+    # print(' ______ ')
+    
+    # print(np.amin(img_A), np.amax(img_A))
+    # print(np.amin(seg_A), np.amax(seg_A))
+    # input('train')
+
 
     
     return img_A, seg_A, seg_mask_A 
@@ -184,12 +201,15 @@ def merge(images, size):
         i = idx % size[1]
         j = idx // size[1]
         img[j*h:j*h+h, i*w:i*w+w, :] = image
-
-    # print(np.amin(img), np.amax(img))
     return img
 
 def imsave(images, size, path):    
-    return io.imsave(path, merge(images, size))
+    print('Merge')
+    print(np.amin(images), np.amax(images))
+    img = merge(images, size)
+    print(np.amin(img), np.amax(img))
+
+    return io.imsave(path, img)
 
 
 def center_crop(x, crop_h, crop_w,
@@ -213,4 +233,9 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
     return np.array(cropped_image)*2 - 1.
 
 def inverse_transform(images):
+    print('Inverse Transform')
+    print(np.amin(images), np.amax(images))
+    print(np.amin((images+1.)/2), np.amax((images+1.)/2))
+    imgplot = plt.imshow(((images+1.)/2)[0])
+    plt.show()
     return (images+1.)/2.

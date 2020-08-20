@@ -192,7 +192,7 @@ class sggan(object):
                 batch_seg_mask_A = []
 
                 for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
+                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=False, augmenter=augmenter) # num_seg_masks=self.segment_class)
                     batch_images.append(tmp_image)
                     batch_segs.append(tmp_seg)
 

@@ -44,7 +44,7 @@ def scores(label_trues, label_preds, n_class):
         "Class IoU": cls_iu,
     }
 
-   def dense_crf(img, output_probs):
+def dense_crf(img, output_probs):
     c = output_probs.shape[0]
     h = output_probs.shape[1]
     w = output_probs.shape[2]
