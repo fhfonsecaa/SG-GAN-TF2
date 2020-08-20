@@ -213,10 +213,10 @@ def merge(images, size):
     return img
 
 def imsave(images, size, path):    
-    print('Merge')
-    print(np.amin(images), np.amax(images))
+    # print('Merge')
+    # print(np.amin(images), np.amax(images))
     img = merge(images, size)
-    print(np.amin(img), np.amax(img))
+    # print(np.amin(img), np.amax(img))
 
     return io.imsave(path, img)
 
@@ -243,8 +243,8 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
 
 def inverse_transform(images):
     print('Inverse Transform')
-    print(np.amin(images), np.amax(images))
-    print(np.amin((images+1.)/2), np.amax((images+1.)/2))
+    # print(np.amin(images), np.amax(images))
+    # print(np.amin((images+1.)/2), np.amax((images+1.)/2))
     imgplot = plt.imshow(((images+1.)/2)[0])
     plt.show()
     return (images+1.)/2.
