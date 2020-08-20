@@ -108,8 +108,10 @@ def load_test_data(image_path, image_width=32, image_height=32):
     # img = img/2 - 1
     # print('Loading Test Data')
     # print(np.amin(img), np.amax(img))
-    # input('test')
-    seg = imread(image_path[0].replace("testA","testA_seg"))
+    print(image_path.replace("testA","testA_seg"))
+    print(image_path)
+    input('test')
+    seg = imread(image_path.replace("testA","testA_seg"))
     seg = resize(seg, [image_height, image_width, 3])
     
     return img, seg #img
