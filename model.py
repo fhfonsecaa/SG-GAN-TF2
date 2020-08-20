@@ -253,7 +253,7 @@ class sggan(object):
             lt, lp = crf_wrapper(test_label, pred_img)
             # lt = swap_channels(test_img).numpy()
         else:
-            lt = test_label.transpose(0,3,2,1)
+            lt = test_label.numpy().transpose(0,3,2,1)
             lp = pred_img.numpy().transpose(0,3,2,1)
         
         return lt, lp
