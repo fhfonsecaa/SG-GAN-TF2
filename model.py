@@ -9,13 +9,13 @@ from collections import namedtuple
 from module import generator_unet, generator_resnet, discriminator, mae_criterion, \
                     sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion
 
-from utils import load_train_data, load_test_data, ImagePool, save_images, get_img, DataAugmentation
+from utils import load_train_data, load_test_data, ImagePool, save_images, get_img, DataAugmentation, plot_tensors
 
 import tensorflow as tf
 import datetime, os
 
 import metric
-from metric import scores, dense_crf
+from metric import scores, dense_crf, scores_seg_fake, scores_seg_da_fake, scores_mask_sample_crf, scores_fake_mask_crf, scores_mask_fake_crf
 import pandas as pd
 
 generator_loss_metric = tf.keras.metrics.Mean(name='generator_loss_metric')
@@ -265,11 +265,13 @@ class sggan(object):
         
         sample_files = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/testA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/testA'))
         
-        preds = []
-        gts = []
+        preds1=[]; preds2=[]; preds3=[]; preds4=[]; preds5=[];
+        gts1=[]; gts2=[]; gts3=[]; gts4=[]; gts5=[];
         
         fake_img = []
         actual_image = []
+        
+        plot_labels = True
         
         for sample_file in sample_files:
             # print('Processing image: ' + sample_file)
@@ -278,10 +280,15 @@ class sggan(object):
             #### sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
             
             #### [CHANGES]
-            sample_image, segment_class = load_test_data(sample_file, args.image_width, args.image_height)
+            sample_image, seg_image, seg_mask_64, seg_mask_8 = load_test_data(sample_file, args.image_width, args.image_height)
             sample_image = [sample_image]
-            segment_class = [segment_class]
-            segment_class = np.array(segment_class).astype(np.float32)
+            seg_image = [seg_image]
+            # seg_maks_64 = [seg_mask_64]
+            seg_mask_8 = [seg_mask_8]
+            
+            seg_image = np.array(seg_image).astype(np.float32)
+            seg_mask_8 = np.array(seg_mask_8).astype(np.float32)
+            seg_mask_64 = np.expand_dims(seg_mask_64, axis=0)
             ####
             
             
@@ -289,6 +296,7 @@ class sggan(object):
             rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
             
+            # Get fake image
             fake_A = self.generator(rescaled_sample)
             fake_img = fake_A
             
@@ -299,24 +307,121 @@ class sggan(object):
             save_images(sample_image, [1, 1], real_image_copy)
             save_images(fake_img, [1, 1], image_path)
             
-            # Compute test scores
+            # Get fake image
             actual_image = get_img(sample_image, [1, 1])
             fake_img = get_img(fake_A, [1, 1])
             # actual_image = np.array(actual_image).astype(np.uint8)
             
-            # Get test, prediction labels
-            lp, lt = self.get_labels(actual_image, fake_img, crf=False)
+            # Get da_fake discriminator output
+            da_fake = self.discriminator([fake_A, seg_mask_8])
+            # da_fake_rescaled = tf.image.convert_image_dtype(da_fake, np.uint8)
             
-            preds += list(np.argmax(lp, axis=1))
-            gts += list(np.argmax(lt, axis=1)) # list(true_img.numpy())
+            # Get test, prediction labels
+            # lp, lt = self.get_labels(actual_image, fake_img, crf=False)
+            # preds += list(np.argmax(lp, axis=1))
+            # gts += list(np.argmax(lt, axis=1))
+            
+            lt1, lp1 = scores_seg_fake(seg_image, fake_img)
+            preds1 += list(lp1)
+            gts1 += list(lt1)
+            
+            lt2, lp2 = scores_mask_sample_crf(seg_mask_64, rescaled_sample)
+            preds2 += list(lp2)
+            gts2 += list(lt2)
+            
+            lt3, lp3 = scores_fake_mask_crf(seg_mask_64, rescaled_sample, fake_img)
+            preds3 += list(lp3)
+            gts3 += list(lt3)
+            
+            lt4, lp4 = scores_seg_da_fake(seg_image, da_fake)
+            preds4 += list(lp4)
+            gts4 += list(lt4)
+            
+            lt5, lp5 = scores_mask_fake_crf(rescaled_sample, seg_mask_64, fake_img)
+            preds5 += list(lp5)
+            gts5 += list(lt5)
             
             # return fake_img, actual_image
             # yield fake_img, actual_image
             
-        score = scores(gts, preds, n_class=args.segment_class)
+        score = scores(gts1, preds1, n_class=args.segment_class)
         score_df = pd.DataFrame(score)
-        print("\n[*] Test scores:")
+        
+        score_crf = scores(gts2, preds2, n_class=args.segment_class)
+        score_crf_df = pd.DataFrame(score_crf)
+        
+        score_crf_2 = scores(gts3, preds3, n_class=args.segment_class)
+        score_crf_2_df = pd.DataFrame(score_crf_2)
+        
+        score_d = scores(gts4, preds4, n_class=args.segment_class)
+        score_d_df = pd.DataFrame(score_d)
+        
+        score_crf_3 = scores(gts5, preds5, n_class=args.segment_class)
+        score_crf_3_df = pd.DataFrame(score_crf_3)
+        
+        print("\n[*] ------------")
+        print("[*] Test scores:\n")
+        
+        ########
+        if plot_labels:
+            title="[*] Labels: seg_image | fake_img"
+            name1="seg_image"
+            name2="fake_image"
+            for lt, lp in zip(gts1, preds1):
+                plot_tensors(lt, lp, title, name1, name2)
+            
+        print("---------------------------")
+        print("lt: seg_img || lp: fake_img")
         print(score_df)
+        
+        ########
+        if plot_labels:
+            title="[*] Labels: seg_class_mask | crf(sample_image)"
+            name1="seg_class_mask"
+            name2="crf(sample_image, seg_class_mask)"
+            for lt, lp in zip(gts2, preds2):
+                plot_tensors(lt, lp, title, name1, name2)
+            
+        print("---------------------------")
+        print("lt: seg_mask || lp: crf(test sample)")
+        print(score_crf_df)
+        
+        ########
+        if plot_labels:
+            title="[*] Labels: fake_img | crf(sample_image, seg_mask)"
+            name1="fake_img"
+            name2="crf(sample_image, seg_mask)"
+            for lt, lp in zip(gts3, preds3):
+                plot_tensors(lt, lp, title, name1, name2)
+            
+        print("-------------------------------------")
+        print("lt: fake_img || lp: crf(sample_image, seg_mask)")
+        print(score_crf_2_df)
+        
+        #########
+        if plot_labels:
+            title="[*] Labels: seg_image | fake_img"
+            name1="seg_image"
+            name2="da_fake"
+            for lt, lp in zip(gts4, preds4):
+                plot_tensors(lt, lp, title, name1, name2)
+            
+        print("----------------------------")
+        print("lt: seg_image || lp: da_fake")
+        print(score_d_df)
+        
+        #########
+        if plot_labels:
+            title="[*] Labels: seg_mask | crf(sample_image, fake_img)"
+            name1="seg_mask"
+            name2="crf(sample_image, fake_img)"
+            for lt, lp in zip(gts5, preds5):
+                plot_tensors(lt, lp, title, name1, name2)
+            
+        print("----------------------------")
+        print("lt: seg_mask | lp: crf(sample_image, fake_img)")
+        print(score_crf_3_df)
+        
         return fake_img, actual_image
 
     def save(self, checkpoint_dir, ep):
