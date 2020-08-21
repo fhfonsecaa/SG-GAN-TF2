@@ -102,16 +102,37 @@ class DataAugmentation(object):
         
         return img_aug, seg_aug
     
-def load_test_data(image_path, image_width=32, image_height=32):
+# def load_test_data(image_path, image_width=32, image_height=32):
+#     img = imread(image_path)
+#     img = resize(img, [image_height, image_width, 3])
+#     # img = img/2 - 1
+#     # print('Loading Test Data')
+#     # print(np.amin(img), np.amax(img))
+#     seg = imread(image_path.replace("testA","testA_seg"))
+#     seg = resize(seg, [image_height, image_width, 3])
+    
+    return img, seg #img
+
+def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34):
     img = imread(image_path)
     img = resize(img, [image_height, image_width, 3])
     # img = img/2 - 1
     # print('Loading Test Data')
     # print(np.amin(img), np.amax(img))
+    
     seg = imread(image_path.replace("testA","testA_seg"))
     seg = resize(seg, [image_height, image_width, 3])
+        
+    # seg_mask_path = "./datasets/city/testA_seg_class/aachen_000016.png"
+    seg_class_A = imread(image_path.replace("testA","testA_seg_class"))
+    seg_class_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
+    seg_mask_1 = scipy.ndimage.interpolation.zoom(seg_class_A, (image_height/seg_class_A.shape[0],
+                                                                image_width/seg_class_A.shape[1],1),
+                                                  mode="nearest")
     
-    return img, seg #img
+    seg_mask_2 = scipy.ndimage.interpolation.zoom(seg_class_A, (image_height/8.0/seg_class_A.shape[0],
+                                                                image_width/8.0/seg_class_A.shape[1],1),
+                                                  mode="nearest")
 
 def one_hot(image_in, num_classes=8):
     hot = np.zeros((image_in.shape[0], image_in.shape[1], num_classes))
@@ -245,6 +266,19 @@ def inverse_transform(images):
     print('Inverse Transform')
     # print(np.amin(images), np.amax(images))
     # print(np.amin((images+1.)/2), np.amax((images+1.)/2))
-    imgplot = plt.imshow(((images+1.)/2)[0])
-    plt.show()
+    ## [check] ## imgplot = plt.imshow(((images+1.)/2)[0])
+    ## [check] ## plt.show()
     return (images+1.)/2.
+
+def plot_tensors(t1, t2, title, name1, name2):
+    fig = plt.figure(1)
+    ax1 = plt.subplot(1,2,1)
+    plt.imshow(t1)
+    ax1.set_title(name1)
+    
+    ax2 = plt.subplot(1,2,2)
+    plt.imshow(t2)
+    ax2.set_title(name2)
+    
+    fig.suptitle(title)
+    plt.show()
