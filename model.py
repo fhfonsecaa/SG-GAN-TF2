@@ -316,10 +316,10 @@ class sggan(object):
         score = scores(gts, preds, n_class=args.segment_class)
         score_df = pd.DataFrame(score)
         with train_summary_writer.as_default():
-            tf.summary.scalar('Overall Accuracy', score["Overall Acc"], step=epoch)
-            tf.summary.scalar('Mean Accuracy', score["Mean Acc"], step=epoch)
-            tf.summary.scalar('Frequency Weighted Accuracy', score["FreqW Acc"], step=epoch)
-            tf.summary.scalar('Mean IoU', score["Mean IoU"], step=epoch)
+            tf.summary.scalar('Overall Accuracy', score["Overall Acc"]*100, step=epoch)
+            tf.summary.scalar('Mean Accuracy', score["Mean Acc"]*100, step=epoch)
+            tf.summary.scalar('Frequency Weighted Accuracy', score["FreqW Acc"]*100, step=epoch)
+            tf.summary.scalar('Mean IoU', score["Mean IoU"]*100, step=epoch)
 
         print("\n[*] Test scores:")
         print(score_df)

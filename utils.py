@@ -245,6 +245,6 @@ def inverse_transform(images):
     print('Inverse Transform')
     # print(np.amin(images), np.amax(images))
     # print(np.amin((images+1.)/2), np.amax((images+1.)/2))
-    imgplot = plt.imshow(((images+1.)/2)[0])
-    plt.show()
+    # imgplot = plt.imshow(((images+1.)/2)[0])
+    # plt.show()
     return (images+1.)/2.
