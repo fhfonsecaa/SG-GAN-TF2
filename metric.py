@@ -68,7 +68,7 @@ def dense_crf(img, output_probs):
     Q = np.array(Q).reshape((c, h, w))
     return Q
    
-   def scores_seg_fake(seg_image, fake_img):
+def scores_seg_fake(seg_image, fake_img):
     ########
     #### true labels: seg_image - pred labels: fake_img ####
     seg_image_gts = np.argmax((255 * seg_image).astype(np.uint8).transpose(0,3,2,1), axis=1)
