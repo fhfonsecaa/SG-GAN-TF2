@@ -110,8 +110,8 @@ class DataAugmentation(object):
 #     # print(np.amin(img), np.amax(img))
 #     seg = imread(image_path.replace("testA","testA_seg"))
 #     seg = resize(seg, [image_height, image_width, 3])
-    
-    return img, seg #img
+#    
+#     return img, seg #img
 
 def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34):
     img = imread(image_path)
@@ -133,6 +133,7 @@ def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34
     seg_mask_2 = scipy.ndimage.interpolation.zoom(seg_class_A, (image_height/8.0/seg_class_A.shape[0],
                                                                 image_width/8.0/seg_class_A.shape[1],1),
                                                   mode="nearest")
+    return img, seg, seg_mask_1, seg_mask_2
 
 def one_hot(image_in, num_classes=8):
     hot = np.zeros((image_in.shape[0], image_in.shape[1], num_classes))
