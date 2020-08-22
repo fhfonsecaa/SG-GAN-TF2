@@ -218,7 +218,7 @@ class sggan(object):
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
             with train_summary_writer.as_default():
-                fake, sample = self.test_during_train(args)
+                fake, sample = self.test_during_train(epoch, args)
 #                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
                 tf.summary.image('Sample Image {}'.format(epoch), sample, step=epoch)
                 tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
@@ -259,7 +259,7 @@ class sggan(object):
         
         return lt, lp
       
-    def test_during_train(self, args):
+    def test_during_train(self, epoch, args):
         
         """Test SG-GAN"""        
         # print(" [*] Running Test ...")
@@ -326,102 +326,108 @@ class sggan(object):
             preds1 += list(lp1)
             gts1 += list(lt1)
             
-            lt2, lp2 = scores_mask_sample_crf(seg_mask_64, rescaled_sample)
-            preds2 += list(lp2)
-            gts2 += list(lt2)
+            # lt2, lp2 = scores_mask_sample_crf(seg_mask_64, rescaled_sample)
+            # preds2 += list(lp2)
+            # gts2 += list(lt2)
             
-            lt3, lp3 = scores_fake_mask_crf(seg_mask_64, rescaled_sample, fake_img)
-            preds3 += list(lp3)
-            gts3 += list(lt3)
+            # lt3, lp3 = scores_fake_mask_crf(seg_mask_64, rescaled_sample, fake_img)
+            # preds3 += list(lp3)
+            # gts3 += list(lt3)
             
-            lt4, lp4 = scores_seg_da_fake(seg_image, da_fake)
-            preds4 += list(lp4)
-            gts4 += list(lt4)
+            # lt4, lp4 = scores_seg_da_fake(seg_image, da_fake)
+            # preds4 += list(lp4)
+            # gts4 += list(lt4)
             
-            lt5, lp5 = scores_mask_fake_crf(rescaled_sample, seg_mask_64, fake_img)
-            preds5 += list(lp5)
-            gts5 += list(lt5)
+            # lt5, lp5 = scores_mask_fake_crf(rescaled_sample, seg_mask_64, fake_img)
+            # preds5 += list(lp5)
+            # gts5 += list(lt5)
             
             # return fake_img, actual_image
             # yield fake_img, actual_image
-            
+        print("score")            
         score = scores(gts1, preds1, n_class=args.segment_class)
         score_df = pd.DataFrame(score)
         
-        score_crf = scores(gts2, preds2, n_class=args.segment_class)
-        score_crf_df = pd.DataFrame(score_crf)
+        # score_crf = scores(gts2, preds2, n_class=args.segment_class)
+        # score_crf_df = pd.DataFrame(score_crf)
         
-        score_crf_2 = scores(gts3, preds3, n_class=args.segment_class)
-        score_crf_2_df = pd.DataFrame(score_crf_2)
+        # score_crf_2 = scores(gts3, preds3, n_class=args.segment_class)
+        # score_crf_2_df = pd.DataFrame(score_crf_2)
         
-        score_d = scores(gts4, preds4, n_class=args.segment_class)
-        score_d_df = pd.DataFrame(score_d)
+        # score_d = scores(gts4, preds4, n_class=args.segment_class)
+        # score_d_df = pd.DataFrame(score_d)
         
-        score_crf_3 = scores(gts5, preds5, n_class=args.segment_class)
-        score_crf_3_df = pd.DataFrame(score_crf_3)
+        # score_crf_3 = scores(gts5, preds5, n_class=args.segment_class)
+        # score_crf_3_df = pd.DataFrame(score_crf_3)
         
         print("\n[*] ------------")
         print("[*] Test scores:\n")
         
+        with train_summary_writer.as_default():
+            tf.summary.scalar('Overall Accuracy', score["Overall Acc"], step=epoch)
+            tf.summary.scalar('Mean Accuracy', score["Mean Acc"], step=epoch)
+            tf.summary.scalar('Frequency Weighted Accuracy', score["FreqW Acc"], step=epoch)
+            tf.summary.scalar('Mean IoU', score["Mean IoU"], step=epoch)
+
         ########
-        if plot_labels:
-            title="[*] Labels: seg_image | fake_img"
-            name1="seg_image"
-            name2="fake_image"
-            for lt, lp in zip(gts1, preds1):
-                plot_tensors(lt, lp, title, name1, name2)
+        # if plot_labels:
+        #     title="[*] Labels: seg_image | fake_img"
+        #     name1="seg_image"
+        #     name2="fake_image"
+        #     for lt, lp in zip(gts1, preds1):
+        #         plot_tensors(lt, lp, title, name1, name2)
             
-        print("---------------------------")
-        print("lt: seg_img || lp: fake_img")
-        print(score_df)
+        # print("---------------------------")
+        # print("lt: seg_img || lp: fake_img")
+        # print(score_df)
         
-        ########
-        if plot_labels:
-            title="[*] Labels: seg_class_mask | crf(sample_image)"
-            name1="seg_class_mask"
-            name2="crf(sample_image, seg_class_mask)"
-            for lt, lp in zip(gts2, preds2):
-                plot_tensors(lt, lp, title, name1, name2)
+        # ########
+        # if plot_labels:
+        #     title="[*] Labels: seg_class_mask | crf(sample_image)"
+        #     name1="seg_class_mask"
+        #     name2="crf(sample_image, seg_class_mask)"
+        #     for lt, lp in zip(gts2, preds2):
+        #         plot_tensors(lt, lp, title, name1, name2)
             
-        print("---------------------------")
-        print("lt: seg_mask || lp: crf(test sample)")
-        print(score_crf_df)
+        # print("---------------------------")
+        # print("lt: seg_mask || lp: crf(test sample)")
+        # print(score_crf_df)
         
-        ########
-        if plot_labels:
-            title="[*] Labels: fake_img | crf(sample_image, seg_mask)"
-            name1="fake_img"
-            name2="crf(sample_image, seg_mask)"
-            for lt, lp in zip(gts3, preds3):
-                plot_tensors(lt, lp, title, name1, name2)
+        # ########
+        # if plot_labels:
+        #     title="[*] Labels: fake_img | crf(sample_image, seg_mask)"
+        #     name1="fake_img"
+        #     name2="crf(sample_image, seg_mask)"
+        #     for lt, lp in zip(gts3, preds3):
+        #         plot_tensors(lt, lp, title, name1, name2)
             
-        print("-------------------------------------")
-        print("lt: fake_img || lp: crf(sample_image, seg_mask)")
-        print(score_crf_2_df)
+        # print("-------------------------------------")
+        # print("lt: fake_img || lp: crf(sample_image, seg_mask)")
+        # print(score_crf_2_df)
         
-        #########
-        if plot_labels:
-            title="[*] Labels: seg_image | fake_img"
-            name1="seg_image"
-            name2="da_fake"
-            for lt, lp in zip(gts4, preds4):
-                plot_tensors(lt, lp, title, name1, name2)
+        # #########
+        # if plot_labels:
+        #     title="[*] Labels: seg_image | fake_img"
+        #     name1="seg_image"
+        #     name2="da_fake"
+        #     for lt, lp in zip(gts4, preds4):
+        #         plot_tensors(lt, lp, title, name1, name2)
             
-        print("----------------------------")
-        print("lt: seg_image || lp: da_fake")
-        print(score_d_df)
+        # print("----------------------------")
+        # print("lt: seg_image || lp: da_fake")
+        # print(score_d_df)
         
-        #########
-        if plot_labels:
-            title="[*] Labels: seg_mask | crf(sample_image, fake_img)"
-            name1="seg_mask"
-            name2="crf(sample_image, fake_img)"
-            for lt, lp in zip(gts5, preds5):
-                plot_tensors(lt, lp, title, name1, name2)
+        # #########
+        # if plot_labels:
+        #     title="[*] Labels: seg_mask | crf(sample_image, fake_img)"
+        #     name1="seg_mask"
+        #     name2="crf(sample_image, fake_img)"
+        #     for lt, lp in zip(gts5, preds5):
+        #         plot_tensors(lt, lp, title, name1, name2)
             
-        print("----------------------------")
-        print("lt: seg_mask | lp: crf(sample_image, fake_img)")
-        print(score_crf_3_df)
+        # print("----------------------------")
+        # print("lt: seg_mask | lp: crf(sample_image, fake_img)")
+        # print(score_crf_3_df)
         
         return fake_img, actual_image
 
