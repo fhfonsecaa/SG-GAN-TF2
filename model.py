@@ -219,8 +219,7 @@ class sggan(object):
 
             with train_summary_writer.as_default():
                 fake, sample = self.test_during_train(epoch, args)
-#                    save_checkpoint_model(epoch,generator_loss_metric.result(),discriminator_loss_metric.result())
-                tf.summary.image('Sample Image {}'.format(epoch), sample, step=epoch)
+                # tf.summary.image('Sample Image {}'.format(epoch), sample, step=epoch)
                 tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
 
                 tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
@@ -271,7 +270,7 @@ class sggan(object):
         
         fake_img = []
         actual_image = []
-        
+
         plot_labels = True
         
         for sample_file in sample_files:
@@ -305,7 +304,7 @@ class sggan(object):
 
             image_path = os.path.join(args.test_dir, os.path.basename(sample_file))
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
-            save_images(sample_image, [1, 1], real_image_copy)
+            # save_images(sample_image, [1, 1], real_image_copy)
             save_images(fake_img, [1, 1], image_path)
             
             # Get fake image

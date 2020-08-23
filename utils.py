@@ -117,12 +117,31 @@ def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34
     img = imread(image_path)
     img = resize(img, [image_height, image_width, 3])
     # img = img/2 - 1
-    # print('Loading Test Data')
-    # print(np.amin(img), np.amax(img))
     
     seg = imread(image_path.replace("testA","testA_seg"))
     seg = resize(seg, [image_height, image_width, 3])
         
+    print('Loading Test Data')
+    # print(np.amin(img), np.amax(img))
+    # print(np.amin(seg), np.amax(seg))
+    # imgplot = plt.imshow(img)
+    # plt.show()   
+    # imgplot = plt.imshow(seg)
+    # plt.show()
+
+    # img = (img*255).astype(int)
+    # seg = (seg*255).astype(int)
+    # print(' ______ ')
+
+    # print(np.amin(img), np.amax(img))
+    # print(np.amin(seg), np.amax(seg))
+    # input('test')
+    # imgplot = plt.imshow(img)
+    # plt.show()   
+    # imgplot = plt.imshow(seg)
+    # plt.show()
+    # input('test')
+
     # seg_mask_path = "./datasets/city/testA_seg_class/aachen_000016.png"
     seg_class_A = imread(image_path.replace("testA","testA_seg_class"))
     seg_class_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
@@ -133,6 +152,7 @@ def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34
     seg_mask_2 = scipy.ndimage.interpolation.zoom(seg_class_A, (image_height/8.0/seg_class_A.shape[0],
                                                                 image_width/8.0/seg_class_A.shape[1],1),
                                                   mode="nearest")
+
     return img, seg, seg_mask_1, seg_mask_2
 
 def one_hot(image_in, num_classes=8):
@@ -184,6 +204,8 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
  
     # img_A = (img_A*2)-1
     # seg_A = (seg_A*2)-1
+    # img_A = (img_A*255).astype(int)
+    # seg_A = (seg_A*255).astype(int)
     # print(' ______ ')
     
     # print(np.amin(img_A), np.amax(img_A))
@@ -232,7 +254,7 @@ def merge(images, size):
         i = idx % size[1]
         j = idx // size[1]
         img[j*h:j*h+h, i*w:i*w+w, :] = image
-    return img
+    return np.array(img).astype(np.uint8)
 
 def imsave(images, size, path):    
     # print('Merge')
@@ -265,11 +287,19 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
 
 def inverse_transform(images):
     print('Inverse Transform')
-    # print(np.amin(images), np.amax(images))
-    # print(np.amin((images+1.)/2), np.amax((images+1.)/2))
-    ## [check] ## imgplot = plt.imshow(((images+1.)/2)[0])
-    ## [check] ## plt.show()
-    return (images+1.)/2.
+    # print(np.amin((images+1.)/2.), np.amax((images+1.)/2.))
+    # imgplot = plt.imshow(((images+1)/2)[0])
+    # plt.show()    
+    images = np.array(((images+1.)/2)*255).astype(np.uint8)
+    # print(' ______ ')
+    
+    # print(np.amin(images[0]), np.amax(images[0]))
+    # input('save')
+    # imgplot = plt.imshow(images[0])
+    # plt.show()   
+    # input('save')
+
+    return images
 
 def plot_tensors(t1, t2, title, name1, name2):
     fig = plt.figure(1)
