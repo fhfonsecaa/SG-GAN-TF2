@@ -81,24 +81,24 @@ class DataAugmentation(object):
             # Left-Right flips
             iaa.Fliplr(0.5),
             # Random crops
-            iaa.Crop(percent=(0, 0.1)),
+            iaa.Crop(percent=(0, 0.3)),
             # Affine transformations
             iaa.Affine(
-                scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},
-                translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
-                rotate=(-25, 25),
-                shear=(-8, 8)
+                # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},
+                translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)},
+                rotate=(-1, 1)
+                # shear=(-8, 8)
                 )
             ], random_order=True) # apply augmenters in random order
         
     def augmentation_func(self, image, seg):
         concat_images = np.concatenate((image, seg), axis=2)
-        concat_images_aug = self.seq1(images=concat_images)
+        concat_images_aug = self.seq2(image=concat_images)
         img_aug, seg_aug, _ = np.split(concat_images_aug, [3,7], axis=2)
         
-        concat_data = np.concatenate((img_aug, seg_aug), axis=2)
-        concat_data_aug = self.seq1(images=concat_data)
-        img_aug, seg_aug, _ = np.split(concat_data_aug, [3,7], axis=2)
+        # concat_data = np.concatenate((img_aug, seg_aug), axis=2)
+        # concat_data_aug = self.seq1(images=concat_data)
+        # img_aug, seg_aug, _ = np.split(concat_data_aug, [3,7], axis=2)
         
         return img_aug, seg_aug
     
@@ -169,8 +169,11 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
     seg_A = imread(image_path[0].replace("trainA","trainA_seg"))
     seg_class_A = imread(image_path[0].replace("trainA","trainA_seg_class")) if not is_testing else None
     
+    img_A = resize(img_A, (img_A.shape[0], img_A.shape[0]))
+    seg_A = resize(seg_A, (seg_A.shape[0], seg_A.shape[0]))
+    
     if do_augment and (augmenter is not None):
-        # print("[*] Augmentation...")
+        print("[*] Augmentation...")
         img_A, seg_A = augmenter.augmentation_func(img_A, seg_A)
         
     # preprocess seg masks
