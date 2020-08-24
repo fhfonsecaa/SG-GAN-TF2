@@ -201,7 +201,7 @@ class sggan(object):
                         batch_images.append(tmp_image)
                         batch_segs.append(tmp_seg)
                         batch_seg_mask_A.append(tmp_seg_mask_A)
-                    
+                
                 batch_images = np.array(batch_images).astype(np.float32)
                 batch_segs = np.array(batch_segs).astype(np.float32)
                 batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
@@ -213,6 +213,8 @@ class sggan(object):
                 self.seg_A = self.seg_data[:, :, :, :args.input_nc]
 
                 self.mask_A = batch_seg_mask_A
+                print('test1',batch_images.size)
+                print('test1',batch_images.shape)
                 
                 self.train_step(args)
 
