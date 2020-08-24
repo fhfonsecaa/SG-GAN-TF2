@@ -164,7 +164,6 @@ class sggan(object):
         lr  = 0.001 # self.lr = 0.001
         self.d_optim = tf.keras.optimizers.Adam(learning_rate=lr, beta_1=args.beta1)
         self.g_optim = tf.keras.optimizers.Adam(learning_rate=lr, beta_1=args.beta1)
-        counter = 1
         start_time = time.time()
 
         if args.continue_train:
@@ -177,7 +176,6 @@ class sggan(object):
             print(" [*] New training STARTED")
 
         for epoch in range(args.epoch):
-            # print("Episode Number: ", counter)
             dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainA'))
             np.random.shuffle(dataA)
             batch_idxs = min(len(dataA), args.train_size) // args.batch_size # self.batch_size
@@ -196,8 +194,13 @@ class sggan(object):
                     tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=False, augmenter=augmenter) # num_seg_masks=self.segment_class)
                     batch_images.append(tmp_image)
                     batch_segs.append(tmp_seg)
-
                     batch_seg_mask_A.append(tmp_seg_mask_A)
+
+                    if (args.use_augmentation):
+                        tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
+                        batch_images.append(tmp_image)
+                        batch_segs.append(tmp_seg)
+                        batch_seg_mask_A.append(tmp_seg_mask_A)
                     
                 batch_images = np.array(batch_images).astype(np.float32)
                 batch_segs = np.array(batch_segs).astype(np.float32)
@@ -213,7 +216,6 @@ class sggan(object):
                 
                 self.train_step(args)
 
-                counter += 1
                 print(("Epoch: [%2d] [%4d/%4d] time: %4.4f Gen_Loss: %f Disc_Loss: %f " % (
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
