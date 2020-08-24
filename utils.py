@@ -81,7 +81,7 @@ class DataAugmentation(object):
             # Left-Right flips
             iaa.Fliplr(0.5),
             # Random crops
-            iaa.Crop(percent=(0, 0.3)),
+            iaa.Crop(percent=(0.2, 0.4)),
             # Affine transformations
             iaa.Affine(
                 # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},
@@ -172,11 +172,20 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
     img_A = resize(img_A, (img_A.shape[0], img_A.shape[0]))
     seg_A = resize(seg_A, (seg_A.shape[0], seg_A.shape[0]))
     
+    imgplot = plt.imshow(img_A)
+    plt.show()   
+    imgplot = plt.imshow(seg_A)
+    plt.show()  
+
     if do_augment and (augmenter is not None):
         print("[*] Augmentation...")
         img_A, seg_A = augmenter.augmentation_func(img_A, seg_A)
         
-    # preprocess seg masks
+    imgplot = plt.imshow(img_A)
+    plt.show()   
+    imgplot = plt.imshow(seg_A)
+    plt.show()   
+    
     if not is_testing:
         seg_mask_A = one_hot(seg_class_A.astype(np.int), num_seg_masks)
     else:
