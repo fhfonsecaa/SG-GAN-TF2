@@ -220,8 +220,7 @@ class sggan(object):
                     epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
 
             with train_summary_writer.as_default():
-                fake, sample = self.test_during_train(epoch, args)
-                # tf.summary.image('Sample Image {}'.format(epoch), sample, step=epoch)
+                fake = self.test_during_train(epoch, args)
                 tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
 
                 tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
@@ -272,6 +271,7 @@ class sggan(object):
         
         fake_img = []
         actual_image = []
+        output_images = []
 
         plot_labels = True
         
@@ -314,6 +314,8 @@ class sggan(object):
             fake_img = get_img(fake_A, [1, 1])
             # actual_image = np.array(actual_image).astype(np.uint8)
             
+            output_images.append(fake_img)
+
             # Get da_fake discriminator output
             da_fake = self.discriminator([fake_A, seg_mask_8])
             # da_fake_rescaled = tf.image.convert_image_dtype(da_fake, np.uint8)
@@ -429,8 +431,16 @@ class sggan(object):
         # print("----------------------------")
         # print("lt: seg_mask | lp: crf(sample_image, fake_img)")
         # print(score_crf_3_df)
-        
-        return fake_img, actual_image
+        print("Making multiple image tensor:", len(output_images))
+
+        if(len(output_images) <= 1):
+            return output_images[0]
+        else:
+            output_tensor = tf.concat([output_images[0], output_images[1]], axis=0)
+            for i in range(2,len(output_images)):
+                output_tensor = tf.concat([output_tensor, output_images[i]], axis=0)
+
+            return output_tensor
 
     def save(self, checkpoint_dir, ep):
         """sggan_gene.model"""
