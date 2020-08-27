@@ -188,9 +188,10 @@ def discriminator():
 
   h4_mask = tf.math.reduce_sum(h4, axis=-1, keepdims=True)
   
+  D_model_logits = tf.keras.Model(inputs = [inputs, mask], outputs = h4_mask)
   D_model = tf.keras.Model(inputs = [inputs, mask], outputs = h4_mask)
 
-  return D_model
+  return D_model, D_model_logits
 
 # Other functions 
 

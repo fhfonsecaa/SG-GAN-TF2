@@ -30,7 +30,6 @@ else:
 
 logdir = os.path.join(logs_base_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 train_summary_writer = tf.summary.create_file_writer(logdir + '/train')
-test_summary_writer = tf.summary.create_file_writer(logdir + '/test')
 
 logs_base_dir = "logs/" # Because of the space in the My Drive
 
@@ -109,26 +108,45 @@ class sggan(object):
         self.weighted_seg_A = []
 
     def generator_loss(self, DA_fake, args):
+        ######### FROM FIRST PAPER #############
         # print("generator_loss")
-        segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
+        # segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
 
-        conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
-        # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
-        self.weighted_seg_A = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_A, axis=-1, keepdims=True)))
+        # conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
+        # # change weighted_seg from (1.0, 0.0) to (0.9, 0.1) for soft gradient-sensitive loss
+        # self.weighted_seg_A = tf.abs(tf.sign(tf.math.reduce_sum(conved_seg_A, axis=-1, keepdims=True)))
             
-        g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
-            + args.L1_lambda * abs_criterion(self.real_A, self.fake_A) 
+        # g_loss = self.criterionGAN(DA_fake, tf.ones_like(DA_fake)) \
+        #     + args.L1_lambda * abs_criterion(self.real_A, self.fake_A) 
         
+        # return g_loss
+
+        ######### FROM CODE #############
+        # https://github.com/ChengBinJin/V-GAN-tensorflow/blob/master/codes/model.py
+        # generator loss
+        gan_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logit_fake, labels=tf.ones_like(d_logit_fake)))
+        seg_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.g_samples, labels=self.Y))
+        g_loss = self.alpha_recip * gan_loss + seg_loss
         return g_loss
+
         
     def discriminator_loss(self, DA_real, DA_fake_sample):
+        ######### FROM FIRST PAPER #############
         # print("discriminator_loss")
-        da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
-        da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
-        da_loss = (da_loss_real + da_loss_fake) / 2
+        # da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
+        # da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
+        # da_loss = (da_loss_real + da_loss_fake) / 2
 
-        d_loss = da_loss 
+        # d_loss = da_loss 
         
+        # return d_loss
+
+        ######### FROM CODE #############
+        # https://github.com/ChengBinJin/V-GAN-tensorflow/blob/master/codes/model.py
+        # discrminator loss
+        d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logit_real, labels=tf.ones_like(d_real)))
+        d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=d_logit_fake, labels=tf.zeros_like(d_logit_fake)))
+        d_loss = d_loss_real + d_loss_fake
         return d_loss
 
     def gen_loss_simple(self, DA_fake, args):
@@ -565,13 +583,16 @@ class sggan(object):
         
         for sample_file in sample_files:
             print('Processing image: ' + sample_file)
-            sample_image = [load_test_data(sample_file, args.image_width, args.image_height)]
-            # [check print] # print("loaded test image:\n", sample_image)
+            sample_image, seg_image, seg_mask_64, seg_mask_8 = load_test_data(sample_file, args.image_width, args.image_height)
+            sample_image = [sample_image]
+            seg_image = [seg_image]
             
             #### MODIFIED sample_image = np.array(sample_image).astype(np.float32) ####
             # Rescale pixels values into range [0,255]
             # (OK) rescaled_sample = [(255 * sample).astype(np.uint8) for sample in sample_image]
-            rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]
+            rescaled_sample = [tf.image.convert_image_dtype(sample, np.uint8) for sample in sample_image]        
+            rescaled_sample = np.array(rescaled_sample).astype(np.float32)
+            sample_image = np.array(sample_image).astype(np.float32)
             
             rescaled_sample = np.array(rescaled_sample).astype(np.float32)
             sample_image = np.array(sample_image).astype(np.float32)
