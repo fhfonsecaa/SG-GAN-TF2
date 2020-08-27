@@ -45,6 +45,7 @@ class sggan(object):
         self.Lg_lambda = args.Lg_lambda
         self.dataset_dir = args.dataset_dir
         self.segment_class = args.segment_class
+        self.alpha_recip = 1. / args.ratio_gan2seg if args.ratio_gan2seg > 0 else 0
 
         self.discriminator = discriminator()
         if args.use_resnet:
@@ -148,8 +149,24 @@ class sggan(object):
         d_loss = d_loss_real + d_loss_fake
         return d_loss
 
+    def gen_loss_simple(self, DA_fake, args):
+        # print("generator_loss")
+        gan_loss  = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=DA_fake, labels=tf.ones_like(DA_fake)))
+        seg_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.fake_A, labels=self.seg_A))
+        # self.g_loss = self.alpha_recip * gan_loss + seg_loss
         
+        return self.alpha_recip * gan_loss + seg_loss
     
+    def disc_loss_simple(self, DA_real, DA_fake_sample):
+        # print("discriminator_loss")
+        d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=DA_real, labels=tf.ones_like(DA_real)))
+        d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=DA_fake_sample, labels=tf.zeros_like(DA_fake_sample)))
+        # self.d_loss = self.d_loss_real + self.d_loss_fake        
+        return d_loss_real + d_loss_fake
+
     # @tf.function
     def train_step (self, args):
         # print("train_step")
@@ -164,8 +181,11 @@ class sggan(object):
         
             da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
         
-            self.gen_loss = self.generator_loss(da_fake, args)
-            self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
+            # self.gen_loss = self.generator_loss(da_fake, args)
+            # self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
+            self.gen_loss = self.gen_loss_simple(da_fake, args)
+            self.disc_loss = self.disc_loss_simple(da_real, da_fake_sample)
+
             # print(self.gen_loss)
                 
         generator_loss_metric(self.gen_loss)
@@ -233,6 +253,8 @@ class sggan(object):
                 self.seg_A = self.seg_data[:, :, :, :args.input_nc]
 
                 self.mask_A = batch_seg_mask_A
+                # print('test1',batch_images.size)
+                # print('test1',batch_images.shape)
                 
                 self.train_step(args)
 
@@ -451,7 +473,7 @@ class sggan(object):
         # print("----------------------------")
         # print("lt: seg_mask | lp: crf(sample_image, fake_img)")
         # print(score_crf_3_df)
-        print("Making multiple image tensor:", len(output_images))
+        # print("Making multiple image tensor:", len(output_images))
 
         if(len(output_images) <= 1):
             return output_images[0]
