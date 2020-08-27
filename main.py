@@ -18,6 +18,7 @@ parser.add_argument('--batch_size', dest='batch_size', type=int, default=1, help
 parser.add_argument('--train_size', dest='train_size', type=int, default=1e8, help='# images used to train')
 parser.add_argument('--img_height', dest='image_height', type=int, default=64, help='image height')
 parser.add_argument('--img_width', dest='image_width', type=int, default=64, help='image width')
+parser.add_argument('--ratio_gan2seg', dest='ratio_gan2seg', type=int, default=10, help='ratio of gan loss to seg loss')
 parser.add_argument('--use_augmentation', dest='use_augmentation', type=bool, default=True, help='Enable/Disable Data Augmentation')
 parser.add_argument('--ngf', dest='ngf', type=int, default=64, help='# of gen filters in first conv layer')
 parser.add_argument('--ndf', dest='ndf', type=int, default=64, help='# of discri filters in first conv layer')
