@@ -177,7 +177,7 @@ class sggan(object):
 
             self.fake_A = self.generator(self.real_A)
             
-            da_real = self.discriminator([self.real_A, self.mask_A])
+            da_real = self.discriminator([self.seg_A, self.mask_A])
             da_fake = self.discriminator([self.fake_A, self.mask_A])
         
             da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
