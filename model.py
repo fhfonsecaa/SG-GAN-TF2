@@ -182,10 +182,10 @@ class sggan(object):
         
             da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
         
-            self.gen_loss = self.generator_loss(da_fake, args)
-            self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
-            # self.gen_loss = self.gen_loss_simple(da_fake, args)
-            # self.disc_loss = self.disc_loss_simple(da_real, da_fake_sample)
+            # self.gen_loss = self.generator_loss(da_fake, args)
+            # self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
+            self.gen_loss = self.gen_loss_simple(da_fake, args)
+            self.disc_loss = self.disc_loss_simple(da_real, da_fake_sample)
             # self.gen_loss = self.gen_loss_p2p(da_fake, self.fake_A, self.seg_A)
             # self.disc_loss = self.disc_loss_p2p(da_real, da_fake_sample)
 
