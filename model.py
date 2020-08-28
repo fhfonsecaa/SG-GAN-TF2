@@ -148,6 +148,25 @@ class sggan(object):
             logits=DA_fake_sample, labels=tf.zeros_like(DA_fake_sample)))
         # self.d_loss = self.d_loss_real + self.d_loss_fake        
         return d_loss_real + d_loss_fake
+      
+    def gen_loss_p2p(self, DA_fake, fake_A, seg_A):
+        loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+        LAMBDA = 100
+        # Losses computation
+        gan_loss = loss_object(tf.ones_like(DA_fake), DA_fake)
+        # mean absolute error
+        l1_loss = tf.reduce_mean(tf.abs(seg_A - fake_A))
+        total_gen_loss = gan_loss + (LAMBDA * l1_loss)
+        
+        return total_gen_loss
+      
+    def disc_loss_p2p(self, DA_real, DA_fake):
+        loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+        real_loss = loss_object(tf.ones_like(DA_real), DA_real)
+        generated_loss = loss_object(tf.zeros_like(DA_fake), DA_fake)
+        total_disc_loss = real_loss + generated_loss
+        
+        return total_disc_loss
 
     # @tf.function
     def train_step (self, args):
@@ -165,8 +184,10 @@ class sggan(object):
         
             # self.gen_loss = self.generator_loss(da_fake, args)
             # self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
-            self.gen_loss = self.gen_loss_simple(da_fake, args)
-            self.disc_loss = self.disc_loss_simple(da_real, da_fake_sample)
+            # self.gen_loss = self.gen_loss_simple(da_fake, args)
+            # self.disc_loss = self.disc_loss_simple(da_real, da_fake_sample)
+            self.gen_loss = self.gen_loss_p2p(da_fake, self.fake_A, self.seg_A)
+            self.disc_loss = self.disc_loss_p2p(da_real, da_fake_sample)
 
             # print(self.gen_loss)
                 
