@@ -121,7 +121,7 @@ def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34
     seg = imread(image_path.replace("testA","testA_seg"))
     seg = resize(seg, [image_height, image_width, 3])
         
-    print('Loading Test Data')
+    # print('Loading Test Data')
     # print(np.amin(img), np.amax(img))
     # print(np.amin(seg), np.amax(seg))
     # imgplot = plt.imshow(img)
@@ -206,7 +206,7 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
         img_A = resize(img_A, (image_height, image_width))
         seg_A = resize(seg_A, (image_height, image_width))
 
-    print('Loading Train Data')
+    # print('Loading Train Data')
     # print(np.amin(img_A), np.amax(img_A))
     # print(np.amin(seg_A), np.amax(seg_A))    
     # imgplot = plt.imshow(img_A)
@@ -298,7 +298,7 @@ def transform(image, npx=64, is_crop=True, resize_w=64):
     return np.array(cropped_image)*2 - 1.
 
 def inverse_transform(images):
-    print('Inverse Transform')
+    # print('Inverse Transform')
     # print(np.amin((images+1.)/2.), np.amax((images+1.)/2.))
     # imgplot = plt.imshow(((images+1)/2)[0])
     # plt.show()    
