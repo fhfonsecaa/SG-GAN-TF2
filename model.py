@@ -176,7 +176,7 @@ class sggan(object):
             # print("GradientTape")
 
             # self.fake_A = self.generator(self.real_A)
-            if self.fake_A.shape[0] is None:
+            if self.fake_A.shape[0] is None or self.fake_A.shape[0] == 10:
                 self.fake_A = self.generator(self.real_A)
             else:
                 fake_a = self.generator(self.real_A)
