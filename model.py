@@ -175,7 +175,12 @@ class sggan(object):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             # print("GradientTape")
 
-            self.fake_A = self.generator(self.real_A)
+            # self.fake_A = self.generator(self.real_A)
+            if self.fake_A.shape[0] is None:
+                self.fake_A = self.generator(self.real_A)
+            else:
+                fake_a = self.generator(self.real_A)
+                self.fake_A = tf.concat([self.fake_A, fake_a], axis=0)
             
             da_real = self.discriminator([self.seg_A, self.mask_A])
             da_fake = self.discriminator([self.fake_A, self.mask_A])
