@@ -149,8 +149,8 @@ def load_test_data(image_path, image_width=32, image_height=32, num_seg_masks=34
                                                                 image_width/seg_class_A.shape[1],1),
                                                   mode="nearest")
     
-    seg_mask_2 = scipy.ndimage.interpolation.zoom(seg_class_A, (image_height/8.0/seg_class_A.shape[0],
-                                                                image_width/8.0/seg_class_A.shape[1],1),
+    seg_mask_2 = scipy.ndimage.interpolation.zoom(seg_class_A, (image_height/34.0/seg_class_A.shape[0],
+                                                                image_width/34.0/seg_class_A.shape[1],1),
                                                   mode="nearest")
 
     return img, seg, seg_mask_1, seg_mask_2
@@ -194,8 +194,8 @@ def load_train_data(image_path, image_width=32, image_height=32, num_seg_masks=8
     if not is_testing:
         img_A = resize(img_A, (image_height, image_width))
         seg_A = resize(seg_A, (image_height, image_width))
-        seg_mask_A = scipy.ndimage.interpolation.zoom(seg_mask_A, (image_height/8.0/seg_mask_A.shape[0],
-                                                                   image_width/8.0/seg_mask_A.shape[1],1),
+        seg_mask_A = scipy.ndimage.interpolation.zoom(seg_mask_A, (image_height/34.0/seg_mask_A.shape[0],
+                                                                   image_width/34.0/seg_mask_A.shape[1],1),
                                                       mode="nearest")
         
         if np.random.random() > 0.5:

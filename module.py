@@ -166,7 +166,7 @@ def discriminator():
   inputs = tf.keras.layers.Input(shape=(image_height,image_width,3,))
   
   # mask = tf.keras.layers.Input(shape=(image_height,image_width,3,))
-  mask = tf.keras.layers.Input(shape=(int(image_height/8), int(image_width/8), segment_class))
+  mask = tf.keras.layers.Input(shape=(int(image_height/34), int(image_width/34), segment_class))
 
   h0 = tf.keras.layers.Conv2D(df_dim, (3, 3), strides=(2,2), padding="same")(inputs)
   h0 = tf.keras.layers.LeakyReLU() (h0)
@@ -182,8 +182,20 @@ def discriminator():
   h3 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(1,1), padding="same")(h2)
   h3 = tfa.layers.InstanceNormalization() (h3)
   h3 = tf.keras.layers.LeakyReLU() (h3)
+  
+  h31 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(2,2), padding="valid")(h3)
+  h31 = tfa.layers.InstanceNormalization() (h31)
+  h31 = tf.keras.layers.LeakyReLU() (h31)
 
-  h4 = tf.keras.layers.Conv2D(segment_class, (3, 3), padding="same")(h3)
+  h32 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(2,2), padding="valid")(h31)
+  h32 = tfa.layers.InstanceNormalization() (h32)
+  h32 = tf.keras.layers.LeakyReLU() (h32)
+  
+  h33 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(1,1), padding="valid")(h32)
+  h33 = tfa.layers.InstanceNormalization() (h33)
+  h33 = tf.keras.layers.LeakyReLU() (h33)
+  
+  h4 = tf.keras.layers.Conv2D(segment_class, (3, 3), padding="same")(h33)
   h4 = tf.keras.layers.multiply([h4, mask])
 
   h4_mask = tf.math.reduce_sum(h4, axis=-1, keepdims=True)
