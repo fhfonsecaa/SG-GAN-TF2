@@ -180,8 +180,8 @@ class sggan(object):
 
             if self.use_pix2pix:
                 da_real = self.discriminator([self.seg_A, self.seg_A])
-                da_fake = self.discriminator([self.fake_A, self.seg_A])
-                da_fake_sample = self.discriminator([self.fake_A, self.seg_A]) 
+                da_fake = self.discriminator([self.seg_A, self.fake_A])
+                da_fake_sample = self.discriminator([self.seg_A, self.fake_A]) 
             else:
                 da_real = self.discriminator([self.seg_A, self.mask_A])
                 da_fake = self.discriminator([self.fake_A, self.mask_A])
