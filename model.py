@@ -50,19 +50,22 @@ class sggan(object):
         self.segment_class = args.segment_class
         self.alpha_recip = 1. / args.ratio_gan2seg if args.ratio_gan2seg > 0 else 0
 
+        self.use_pix2pix = args.use_pix2pix
+
         self.discriminator = discriminator()
         if args.use_resnet:
             self.generator = generator_resnet()
         else:
-            self.generator = generator_unet()
+            if args.use_pix2pix:
+                self.generator = generator_pix2pix()
+                self.discriminator = discriminator_pix2pix()
+            else:
+                self.generator = generator_unet()
+
         if args.use_lsgan:
             self.criterionGAN = mae_criterion
         else:
             self.criterionGAN = sce_criterion
-        if args.use_pix2pix:
-            self.criterionGAN = generator_pix2pix()
-        else:
-            self.criterionGAN = discriminator_pix2pix()
 
         # tf.keras.utils.plot_model(self.discriminator, 'multi_input_and_output_model.png', show_shapes=True)
         # input("")
@@ -181,30 +184,29 @@ class sggan(object):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             # print("GradientTape")
 
-            # self.fake_A = self.generator(self.real_A)
-            if self.fake_A.shape[0] is None or self.fake_A.shape[0] == 10:
+            if self.use_pix2pix:
                 self.fake_A = self.generator(self.real_A)
             else:
-                fake_a = self.generator(self.real_A)
-                self.fake_A = tf.concat([self.fake_A, fake_a], axis=0)
-            
-            da_real = self.discriminator([self.seg_A, self.mask_A])
-            da_fake = self.discriminator([self.fake_A, self.mask_A])
+                if self.fake_A.shape[0] is None or self.fake_A.shape[0] == 10:
+                    self.fake_A = self.generator(self.real_A)
+                else:
+                    fake_a = self.generator(self.real_A)
+                    self.fake_A = tf.concat([self.fake_A, fake_a], axis=0)
+
+            if self.use_pix2pix:
+                da_real = self.discriminator([self.seg_A, self.seg_A])
+                da_fake = self.discriminator([self.fake_A, self.seg_A])
+                da_fake_sample = self.discriminator([self.fake_A, self.seg_A]) 
+            else:
+                da_real = self.discriminator([self.seg_A, self.mask_A])
+                da_fake = self.discriminator([self.fake_A, self.mask_A])
+                da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
         
-            da_fake_sample = self.discriminator([self.fake_A, self.mask_A])
-        
-            # self.gen_loss = self.generator_loss(da_fake, args)
-            # self.disc_loss = self.discriminator_loss(da_real, da_fake_sample)
-            # self.gen_loss = self.gen_loss_simple(da_fake, args)
-            # self.disc_loss = self.disc_loss_simple(da_real, da_fake_sample)
             self.gen_loss = self.gen_loss_p2p(da_fake, self.fake_A, self.seg_A)
             self.disc_loss = self.disc_loss_p2p(da_real, da_fake_sample)
 
-            # print(self.gen_loss)
-                
         generator_loss_metric(self.gen_loss)
         discriminator_loss_metric(self.disc_loss)
-
 
         generator_grads = gen_tape.gradient(self.gen_loss, self.generator.trainable_variables)
         discriminator_grads = disc_tape.gradient(self.disc_loss, self.discriminator.trainable_variables)
@@ -377,7 +379,10 @@ class sggan(object):
             output_images.append(fake_img)
 
             # Get da_fake discriminator output
-            da_fake = self.discriminator([fake_A, seg_mask_8])
+            if self.use_pix2pix:
+                da_fake = self.discriminator([fake_A, seg_image])
+            else:
+                da_fake = self.discriminator([fake_A, seg_mask_8])
             # da_fake_rescaled = tf.image.convert_image_dtype(da_fake, np.uint8)
             
             # Get test, prediction labels
