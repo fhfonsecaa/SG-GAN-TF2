@@ -32,7 +32,7 @@ else:
 
 logdir = os.path.join(logs_base_dir, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 train_summary_writer = tf.summary.create_file_writer(logdir + '/train')
-test_summary_writer = tf.summary.create_file_writer(logdir + '/test')
+# test_summary_writer = tf.summary.create_file_writer(logdir + '/test')
 
 logs_base_dir = "logs/" # Because of the space in the My Drive
 
