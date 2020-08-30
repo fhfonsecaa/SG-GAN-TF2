@@ -7,7 +7,8 @@ import numpy as np
 from collections import namedtuple
 
 from module import generator_unet, generator_resnet, discriminator, mae_criterion, \
-                    sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion
+                    sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion \
+                        generator_pix2pix, discriminator_pix2pix
 
 from utils import load_train_data, load_test_data, ImagePool, save_images, get_img, DataAugmentation, plot_tensors
 
@@ -57,6 +58,10 @@ class sggan(object):
             self.criterionGAN = mae_criterion
         else:
             self.criterionGAN = sce_criterion
+        if args.use_pix2pix:
+            self.criterionGAN = generator_pix2pix()
+        else:
+            self.criterionGAN = discriminator_pix2pix()
 
         # tf.keras.utils.plot_model(self.discriminator, 'multi_input_and_output_model.png', show_shapes=True)
         # input("")
