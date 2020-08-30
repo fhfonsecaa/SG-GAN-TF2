@@ -357,60 +357,17 @@ class sggan(object):
             # Get fake image
             actual_image = get_img(sample_image, [1, 1])
             fake_img = get_img(fake_A, [1, 1])
-            # actual_image = np.array(actual_image).astype(np.uint8)
             
             output_images.append(fake_img)
-
-            # Get da_fake discriminator output
-            if self.use_pix2pix:
-                da_fake = self.discriminator([fake_A, seg_image])
-            else:
-                da_fake = self.discriminator([fake_A, seg_mask_8])
-            # da_fake_rescaled = tf.image.convert_image_dtype(da_fake, np.uint8)
-            
-            # Get test, prediction labels
-            # lp, lt = self.get_labels(actual_image, fake_img, crf=False)
-            # preds += list(np.argmax(lp, axis=1))
-            # gts += list(np.argmax(lt, axis=1))
             
             lt1, lp1 = scores_seg_fake(seg_image, fake_img)
             preds1 += list(lp1)
             gts1 += list(lt1)
             
-            # lt2, lp2 = scores_mask_sample_crf(seg_mask_64, rescaled_sample)
-            # preds2 += list(lp2)
-            # gts2 += list(lt2)
-            
-            # lt3, lp3 = scores_fake_mask_crf(seg_mask_64, rescaled_sample, fake_img)
-            # preds3 += list(lp3)
-            # gts3 += list(lt3)
-            
-            # lt4, lp4 = scores_seg_da_fake(seg_image, da_fake)
-            # preds4 += list(lp4)
-            # gts4 += list(lt4)
-            
-            # lt5, lp5 = scores_mask_fake_crf(rescaled_sample, seg_mask_64, fake_img)
-            # preds5 += list(lp5)
-            # gts5 += list(lt5)
-            
-            # return fake_img, actual_image
-            # yield fake_img, actual_image
         print("score")            
         score = scores(gts1, preds1, n_class=args.segment_class)
         score_df = pd.DataFrame(score)
-        
-        # score_crf = scores(gts2, preds2, n_class=args.segment_class)
-        # score_crf_df = pd.DataFrame(score_crf)
-        
-        # score_crf_2 = scores(gts3, preds3, n_class=args.segment_class)
-        # score_crf_2_df = pd.DataFrame(score_crf_2)
-        
-        # score_d = scores(gts4, preds4, n_class=args.segment_class)
-        # score_d_df = pd.DataFrame(score_d)
-        
-        # score_crf_3 = scores(gts5, preds5, n_class=args.segment_class)
-        # score_crf_3_df = pd.DataFrame(score_crf_3)
-        
+                
         print("\n[*] ------------")
         print("[*] Test scores:\n")
         
