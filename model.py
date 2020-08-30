@@ -36,7 +36,6 @@ test_summary_writer = tf.summary.create_file_writer(logdir + '/test')
 
 logs_base_dir = "logs/" # Because of the space in the My Drive
 
-
 class sggan(object):
     def __init__(self, args):
         self.batch_size = args.batch_size
@@ -79,21 +78,17 @@ class sggan(object):
         self._build_model(args)
         self.pool = ImagePool(args.max_size)
 
-        
         #### [ADDED] CHECKPOINT MANAGER
         self.lr = 0.001
         self.d_optim = tf.keras.optimizers.Adam(learning_rate=self.lr, beta_1=args.beta1)
         self.g_optim = tf.keras.optimizers.Adam(learning_rate=self.lr, beta_1=args.beta1)
-        
         
         self.gen_ckpt = tf.train.Checkpoint(optimizer=self.g_optim, net=self.generator)
         self.disc_ckpt = tf.train.Checkpoint(optimizer=self.d_optim, net=self.discriminator)
         self.gen_ckpt_manager = tf.train.CheckpointManager(self.gen_ckpt, './checkpoint/gta/gen_ckpts', max_to_keep=3)
         self.disc_ckpt_manager = tf.train.CheckpointManager(self.disc_ckpt, './checkpoint/gta/disc_ckpts', max_to_keep=3)
 
-
     def _build_model(self, args):
-        # Replaced placeholder with keras.layers.Input #
         self.real_data = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(args.image_height, args.image_width,
                                                                                 args.input_nc + args.output_nc), name="real_A_images")
         self.seg_data = tf.keras.layers.Input(dtype=tf.dtypes.float32, shape=(args.image_height, args.image_width,
@@ -104,7 +99,6 @@ class sggan(object):
         self.real_A =  self.real_data[:, :, :, :args.input_nc]                              
         self.seg_A = self.seg_data[:, :, :, :args.input_nc]                                 
 
-        #fake_A
         self.fake_A =  tf.keras.layers.Input(dtype=tf.dtypes.float32,            
                                              shape=(None, args.image_height, args.image_width, args.input_nc),
                                              name="fake_A_sample")
@@ -118,7 +112,6 @@ class sggan(object):
         self.weighted_seg_A = []
 
     def generator_loss(self, DA_fake, args):
-        # print("generator_loss")
         segA = tf.pad(self.seg_A, [[0, 0], [1, 1], [1, 1], [0, 0]], "REFLECT")
 
         conved_seg_A = tf.abs(tf.nn.depthwise_conv2d(input=segA, filter=self.kernel, strides=[1, 1, 1, 1], padding="VALID", name="conved_seg_A"))
@@ -131,7 +124,6 @@ class sggan(object):
         return g_loss
         
     def discriminator_loss(self, DA_real, DA_fake_sample):
-        # print("discriminator_loss")
         da_loss_real = self.criterionGAN(DA_real, tf.ones_like(DA_real))
         da_loss_fake = self.criterionGAN(DA_fake_sample, tf.zeros_like(DA_fake_sample))
         da_loss = (da_loss_real + da_loss_fake) / 2
@@ -141,21 +133,17 @@ class sggan(object):
         return d_loss
 
     def gen_loss_simple(self, DA_fake, args):
-        # print("generator_loss")
         gan_loss  = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             logits=DA_fake, labels=tf.ones_like(DA_fake)))
         seg_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.fake_A, labels=self.seg_A))
-        # self.g_loss = self.alpha_recip * gan_loss + seg_loss
         
         return self.alpha_recip * gan_loss + seg_loss
     
     def disc_loss_simple(self, DA_real, DA_fake_sample):
-        # print("discriminator_loss")
         d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             logits=DA_real, labels=tf.ones_like(DA_real)))
         d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(
             logits=DA_fake_sample, labels=tf.zeros_like(DA_fake_sample)))
-        # self.d_loss = self.d_loss_real + self.d_loss_fake        
         return d_loss_real + d_loss_fake
       
     def gen_loss_p2p(self, DA_fake, fake_A, seg_A):
@@ -179,10 +167,7 @@ class sggan(object):
 
     # @tf.function
     def train_step (self, args):
-        # print("train_step")
-
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-            # print("GradientTape")
 
             if self.use_pix2pix:
                 self.fake_A = self.generator(self.real_A)
@@ -269,8 +254,6 @@ class sggan(object):
                     self.seg_A = self.seg_data[:, :, :, :args.input_nc]
 
                     self.mask_A = batch_seg_mask_A
-                    # print('test1',batch_images.size)
-                    # print('test1',batch_images.shape)
                     
                     self.train_step(args)
 
@@ -625,4 +608,3 @@ class sggan(object):
             real_image_copy = os.path.join(args.test_dir, "real_" + os.path.basename(sample_file))
             save_images(sample_image, [1, 1], real_image_copy)
             save_images(fake_img, [1, 1], image_path)
-
