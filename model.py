@@ -7,8 +7,9 @@ import numpy as np
 from collections import namedtuple
 
 from module import generator_unet, generator_resnet, discriminator, mae_criterion, \
-                    sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion \
-                        generator_pix2pix, discriminator_pix2pix
+                    sce_criterion, tf_kernel_prep_3d, abs_criterion, gradloss_criterion 
+                    
+from module import generator_pix2pix, discriminator_pix2pix
 
 from utils import load_train_data, load_test_data, ImagePool, save_images, get_img, DataAugmentation, plot_tensors
 

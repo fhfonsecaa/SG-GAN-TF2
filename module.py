@@ -56,7 +56,6 @@ def generator_pix2pix():
     downsample(512, 4), # (bs, 8, 8, 512)
     downsample(512, 4), # (bs, 4, 4, 512)
     downsample(512, 4), # (bs, 2, 2, 512)
-    downsample(512, 4), # (bs, 1, 1, 512)
   ]
 
   up_stack = [
