@@ -222,63 +222,67 @@ class sggan(object):
                 print(" [!] Load failed...")
         else:
             print(" [*] New training STARTED")
+        try:
+            for epoch in range(args.epoch):
+                dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainA'))
+                np.random.shuffle(dataA)
+                batch_idxs = min(len(dataA), args.train_size) // args.batch_size # self.batch_size
+                # lr = args.lr if epoch < args.epoch_step else args.lr*(args.epoch-epoch)/(args.epoch-args.epoch_step)
 
-        for epoch in range(args.epoch):
-            dataA = glob('./datasets/{}/*.*'.format(args.dataset_dir + '/trainA'))  # glob('./datasets/{}/*.*'.format(self.dataset_dir + '/trainA'))
-            np.random.shuffle(dataA)
-            batch_idxs = min(len(dataA), args.train_size) // args.batch_size # self.batch_size
-            # lr = args.lr if epoch < args.epoch_step else args.lr*(args.epoch-epoch)/(args.epoch-args.epoch_step)
-
-            augmenter = DataAugmentation()
-            
-            for idx in range(0, batch_idxs):
-                batch_files = list(zip(dataA[idx * args.batch_size:(idx + 1) * args.batch_size]))
+                augmenter = DataAugmentation()
                 
-                batch_images = []
-                batch_segs = []
-                batch_seg_mask_A = []
+                for idx in range(0, batch_idxs):
+                    batch_files = list(zip(dataA[idx * args.batch_size:(idx + 1) * args.batch_size]))
+                    
+                    batch_images = []
+                    batch_segs = []
+                    batch_seg_mask_A = []
 
-                for batch_file in batch_files:
-                    tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=False, augmenter=augmenter) # num_seg_masks=self.segment_class)
-                    batch_images.append(tmp_image)
-                    batch_segs.append(tmp_seg)
-                    batch_seg_mask_A.append(tmp_seg_mask_A)
-
-                    if (args.use_augmentation):
-                        tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
+                    for batch_file in batch_files:
+                        tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=False, augmenter=augmenter) # num_seg_masks=self.segment_class)
                         batch_images.append(tmp_image)
                         batch_segs.append(tmp_seg)
                         batch_seg_mask_A.append(tmp_seg_mask_A)
-                
-                batch_images = np.array(batch_images).astype(np.float32)
-                batch_segs = np.array(batch_segs).astype(np.float32)
-                batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
-                
-                self.real_data = batch_images
-                self.seg_data = batch_segs
 
-                self.real_A = self.real_data[:, :, :, :args.input_nc]
-                self.seg_A = self.seg_data[:, :, :, :args.input_nc]
-
-                self.mask_A = batch_seg_mask_A
-                # print('test1',batch_images.size)
-                # print('test1',batch_images.shape)
-                
-                self.train_step(args)
-
-                print(("Epoch: [%2d] [%4d/%4d] time: %4.4f Gen_Loss: %f Disc_Loss: %f " % (
-                    epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
-
-            with train_summary_writer.as_default():
-                fake = self.test_during_train(epoch, args)
-                tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
-
-                tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
-                tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)
+                        if (args.use_augmentation):
+                            tmp_image, tmp_seg, tmp_seg_mask_A = load_train_data(batch_file, args.image_width, args.image_height,  num_seg_masks=args.segment_class, do_augment=True, augmenter=augmenter) # num_seg_masks=self.segment_class)
+                            batch_images.append(tmp_image)
+                            batch_segs.append(tmp_seg)
+                            batch_seg_mask_A.append(tmp_seg_mask_A)
                     
-            generator_loss_metric.reset_states()
-            discriminator_loss_metric.reset_states()
-        self.save(args.checkpoint_dir, epoch)
+                    batch_images = np.array(batch_images).astype(np.float32)
+                    batch_segs = np.array(batch_segs).astype(np.float32)
+                    batch_seg_mask_A = np.array(batch_seg_mask_A).astype(np.float32)
+                    
+                    self.real_data = batch_images
+                    self.seg_data = batch_segs
+
+                    self.real_A = self.real_data[:, :, :, :args.input_nc]
+                    self.seg_A = self.seg_data[:, :, :, :args.input_nc]
+
+                    self.mask_A = batch_seg_mask_A
+                    # print('test1',batch_images.size)
+                    # print('test1',batch_images.shape)
+                    
+                    self.train_step(args)
+
+                    print(("Epoch: [%2d] [%4d/%4d] time: %4.4f Gen_Loss: %f Disc_Loss: %f " % (
+                        epoch, idx, batch_idxs, time.time() - start_time, self.gen_loss, self.disc_loss)))
+
+                with train_summary_writer.as_default():
+                    fake = self.test_during_train(epoch, args)
+                    tf.summary.image('Segmentation Epoch {}'.format(epoch), fake, step=epoch)
+
+                    tf.summary.scalar('Generator Loss', generator_loss_metric.result(), step=epoch)
+                    tf.summary.scalar('Discriminator Loss', discriminator_loss_metric.result(), step=epoch)
+                        
+                generator_loss_metric.reset_states()
+                discriminator_loss_metric.reset_states()
+        except KeyboardInterrupt:
+            self.save(args.checkpoint_dir, epoch)
+        finally:
+            self.save(args.checkpoint_dir, epoch)
+
         
     def get_labels (self, test_label, pred_img, crf=False):
         def swap_channels(tensor):
