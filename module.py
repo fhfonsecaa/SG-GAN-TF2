@@ -131,8 +131,7 @@ def generator_unet():
   dropout_rate = 0.5 if is_training else 1.0
   
   # inputs = tf.keras.layers.Input(shape=(32,32,3,))
-  # inputs = tf.keras.layers.Input(shape=(64,64,3,))
-  inputs = tf.keras.layers.Input(shape=(128,128,3,))
+  inputs = tf.keras.layers.Input(shape=(64,64,3,))
   
   e1 = tf.keras.layers.Conv2D(gf_dim, (3, 3), padding="same")(inputs)
   e1 = tfa.layers.InstanceNormalization() (e1)
@@ -222,7 +221,7 @@ def generator_resnet():
   output_c_dim = 3 
   
   # inputs = tf.keras.layers.Input(shape=(32,32,3,),dtype=np.uint8)
-  inputs = tf.keras.layers.Input(shape=(64,64,3,),)
+  inputs = tf.keras.layers.Input(shape=(128,128,3,),)
   
   # Justin Johnson's model from https://github.com/jcjohnson/fast-neural-style/
   # The network with 9 blocks consists of: c7s1-32, d64, d128, R128, R128, R128,
@@ -273,8 +272,8 @@ def discriminator():
   print("discriminator")
   df_dim = 64
   segment_class = 34
-  image_height = 128 #64 #32
-  image_width = 128 #64 #32
+  image_height = 64 #32
+  image_width = 64 #32
 
   inputs = tf.keras.layers.Input(shape=(image_height,image_width,3,))
   
@@ -304,11 +303,11 @@ def discriminator():
   h32 = tfa.layers.InstanceNormalization() (h32)
   h32 = tf.keras.layers.LeakyReLU() (h32)
   
-  h33 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(1,1), padding="valid")(h32)
-  h33 = tfa.layers.InstanceNormalization() (h33)
-  h33 = tf.keras.layers.LeakyReLU() (h33)
+  # h33 = tf.keras.layers.Conv2D(df_dim*8, (3, 3), strides=(1,1), padding="valid")(h32)
+  # h33 = tfa.layers.InstanceNormalization() (h33)
+  # h33 = tf.keras.layers.LeakyReLU() (h33)
   
-  h4 = tf.keras.layers.Conv2D(segment_class, (3, 3), padding="same")(h33)
+  h4 = tf.keras.layers.Conv2D(segment_class, (3, 3), padding="same")(h32)
   h4 = tf.keras.layers.multiply([h4, mask])
 
   h4_mask = tf.math.reduce_sum(h4, axis=-1, keepdims=True)
