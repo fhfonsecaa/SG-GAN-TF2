@@ -169,14 +169,16 @@ class sggan(object):
     def train_step (self, args):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
 
-            if self.use_pix2pix:
-                self.fake_A = self.generator(self.real_A)
-            else:
-                if self.fake_A.shape[0] is None or self.fake_A.shape[0] == 10:
-                    self.fake_A = self.generator(self.real_A)
-                else:
-                    fake_a = self.generator(self.real_A)
-                    self.fake_A = tf.concat([self.fake_A, fake_a], axis=0)
+            #Loss Memory
+            # if self.use_pix2pix:
+            #     self.fake_A = self.generator(self.real_A)
+            # else:
+            #     if self.fake_A.shape[0] is None or self.fake_A.shape[0] == 10:
+            #         self.fake_A = self.generator(self.real_A)
+            #     else:
+            #         fake_a = self.generator(self.real_A)
+            #         self.fake_A = tf.concat([self.fake_A, fake_a], axis=0)
+            self.fake_A = self.generator(self.real_A)
 
             if self.use_pix2pix:
                 da_real = self.discriminator([self.seg_A, self.seg_A])
